@@ -44,7 +44,7 @@ body[data-bg="violet"]{--bg:linear-gradient(160deg,#f4edfb,#e5d8f0);}
 body[data-bg="forest"]{--bg:linear-gradient(160deg,#edf6ef,#d7eadd);}
 body[data-bg="paper"]{--bg:#f7f3f4;}
 body.custom-bg::before{background:rgba(250,246,248,.72);}
-.app{position:relative;z-index:1;max-width:680px;margin:0 auto;min-height:100vh;padding-bottom:126px;}
+.app{position:relative;z-index:1;max-width:680px;margin:0 auto;min-height:100vh;padding-bottom:calc(148px + env(safe-area-inset-bottom));}
 
 button{font-family:inherit;border:none;cursor:pointer;color:inherit;}
 input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
@@ -251,7 +251,7 @@ input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
 /* 底部导航 */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;
   background:rgba(255,255,255,.95);backdrop-filter:blur(16px);border-top:1px solid #edd9e2;
-  padding-bottom:env(safe-area-inset-bottom);}
+  min-height:58px;padding-bottom:env(safe-area-inset-bottom);}
 .tab{flex:1;text-align:center;padding:9px 4px 8px;color:var(--muted);font-size:11px;transition:color .25s ease;}
 .tab .ico{font-size:20px;display:block;margin-bottom:2px;}
 .tab.active{color:var(--pink);font-weight:800;}
@@ -371,11 +371,12 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .tab:hover .ico{transform:translateY(-3px) scale(1.12);}
 .tab.active .ico{animation:tabBounce .8s ease;}
 @keyframes tabBounce{0%,100%{transform:translateY(0);}35%{transform:translateY(-5px);}60%{transform:translateY(1px);}}
-.ai-smartbar{position:fixed;left:50%;bottom:72px;transform:translateX(-50%) translateY(0);z-index:70;width:min(660px,calc(100% - 28px));
+.ai-smartbar{position:fixed;left:14px;right:14px;bottom:calc(58px + env(safe-area-inset-bottom) + 8px);transform:none;z-index:59;width:auto;max-width:652px;margin:0 auto;
   display:flex;align-items:center;gap:10px;min-height:50px;padding:9px 12px;
   background:rgba(255,255,255,.9);border:1px solid rgba(226,192,209,.85);border-radius:18px;
-  box-shadow:0 12px 34px rgba(83,48,65,.16);backdrop-filter:blur(18px);transition:opacity .22s ease,transform .22s ease;}
-.ai-smartbar.thinking{opacity:.88;}
+  box-shadow:0 12px 34px rgba(83,48,65,.16);backdrop-filter:blur(18px);
+  opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .25s ease,transform .25s ease;}
+.ai-smartbar.show{opacity:1;pointer-events:auto;transform:translateY(0);}
 .ai-smartbar .ai-avatar{width:32px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,var(--pink),var(--gold));color:#fff;font-size:17px;flex:0 0 auto;
   box-shadow:0 4px 10px rgba(224,82,127,.22);animation:aiPulse 2.4s ease-in-out infinite;}
@@ -384,7 +385,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .ai-smartbar .ai-text small{display:block;margin-top:2px;font-size:11px;color:var(--muted);font-weight:500;line-height:1.4;}
 .ai-smartbar .ai-spark{color:var(--pink);font-size:14px;animation:sparkTwinkle 1.7s ease-in-out infinite;}
 @keyframes sparkTwinkle{0%,100%{opacity:.5;transform:scale(.9);}50%{opacity:1;transform:scale(1.2);}}
-@media (max-width:460px){.ai-smartbar{bottom:66px;padding:8px 10px;}.ai-smartbar .ai-text{font-size:11px;}}
+@media (max-width:460px){.ai-smartbar{padding:8px 10px;}.ai-smartbar .ai-text{font-size:11px;}}
 
 /* 宠物情绪与互动 */
 .pet-stage{position:relative;overflow:hidden;}
@@ -440,6 +441,16 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .tab:active,.icon-btn:active,.btn:active{transform:scale(1.035) !important;transition-duration:.08s;}
 .click-zoom{animation:clickZoom .34s cubic-bezier(.22,1,.36,1) !important;}
 @keyframes clickZoom{0%{transform:scale(1);}42%{transform:scale(1.05);}100%{transform:scale(1);}}
+
+@media (max-width:480px){
+  .screen{padding:14px 10px 28px;}
+  .home-hero{padding:18px 14px 14px;}
+  .quick-grid{gap:10px;margin-top:12px;}
+  .panel{padding:14px;}
+  .app-header{padding:12px 12px 10px;}
+  .home-dashboard{grid-template-columns:repeat(2,1fr);}
+  .home-live-cards{grid-template-columns:1fr;}
+}
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important;transition-duration:.001s !important;}
@@ -540,6 +551,21 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .song-item .song-play{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--gold));color:#fff;font-size:16px;flex:0 0 auto;}
 .song-item .song-del{background:transparent;color:#c45555;font-size:18px;padding:0 2px;}
 .song-empty{text-align:center;padding:28px 0;color:var(--muted);font-size:13px;line-height:1.7;}
+
+/* 存钱计划 */
+.savings-list{display:flex;flex-direction:column;gap:12px;}
+.saving-item{background:rgba(255,255,255,.86);border:1px solid #eadce3;border-radius:8px;padding:12px;}
+.saving-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.saving-head b{font-size:14px;color:var(--deep);}
+.saving-head .amount{font-size:12px;color:var(--muted);}
+.saving-bar{height:10px;background:#f0e2e8;border-radius:99px;overflow:hidden;}
+.saving-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--pink));border-radius:99px;transition:width .3s ease;}
+.saving-periods{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:11px;color:var(--muted);}
+.saving-records{display:flex;flex-direction:column;gap:3px;margin-top:8px;font-size:10px;color:var(--muted);}
+.saving-records span{color:#8b7d86;}
+.saving-actions{display:flex;gap:8px;margin-top:10px;}
+.saving-actions button{flex:1;}
+.saving-empty{text-align:center;padding:28px 0;color:var(--muted);font-size:13px;line-height:1.7;}
 
 /* 视频通话 */
 .video-call-stage{position:relative;min-height:280px;background:#17131a;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
@@ -647,9 +673,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
           <span class="home-live"><i></i> 已连接</span>
         </div>
         <div class="home-couple">
-          <div class="home-person boy"><span class="home-face" id="homeBoyFace">👦</span><b>邵禹</b><small>爸爸</small></div>
+          <div class="home-person boy"><span class="home-face" id="homeBoyFace">👦</span><b id="homeBoyName">邵禹</b><small>爸爸</small></div>
           <div class="home-heart">♥</div>
-          <div class="home-person girl"><span class="home-face" id="homeGirlFace">👧</span><b>杨颖</b><small>妈妈</small></div>
+          <div class="home-person girl"><span class="home-face" id="homeGirlFace">👧</span><b id="homeGirlName">杨颖</b><small>妈妈</small></div>
         </div>
         <div class="home-days">已在一起 <b id="homeTogether">0</b> 天</div>
         <div class="home-next-card">
@@ -974,6 +1000,20 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </section>
 
+    <!-- 存钱计划 -->
+    <section class="screen" id="sc-savings">
+      <div class="panel">
+        <div class="panel-title">💰 存钱计划</div>
+        <div class="field"><label>计划名称</label><input id="savingsName" maxlength="20" placeholder="例如：一起去旅行" /></div>
+        <div class="field"><label>目标金额</label><input id="savingsTarget" type="number" min="1" placeholder="例如：5000" /></div>
+        <button class="btn block" id="savingsAddBtn">创建存钱计划</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📈 我的计划</div>
+        <div class="savings-list" id="savingsList"></div>
+      </div>
+    </section>
+
     <!-- 每日记事 -->
     <section class="screen" id="sc-notes">
       <div class="panel">
@@ -1057,6 +1097,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
         <button class="item" data-open="period"><span class="ico">🌷</span><b>生理期</b><span>预测与饮食建议</span></button>
         <button class="item" data-open="remind"><span class="ico">⏰</span><b>喝水吃饭</b><span>贴心提醒</span></button>
         <button class="item" data-open="notes"><span class="ico">📝</span><b>每日记事</b><span>想说的和想做的</span></button>
+        <button class="item" data-open="savings"><span class="ico">💰</span><b>存钱计划</b><span>一起攒下未来</span></button>
         <button class="item" data-open="settings"><span class="ico">🎨</span><b>主题与背景</b><span>自定义主界面</span></button>
       </div>
       <div class="quick-grid" style="margin-top:12px;">
@@ -1084,6 +1125,18 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
           <button data-who="girl">我是杨颖</button>
         </div>
         <div class="muted" style="margin-top:8px;">这个身份会显示在聊天和定位中。</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">✏️ 名字自定义</div>
+        <div class="field"><label>男方名字</label><input id="boyNameInput" maxlength="10" placeholder="邵禹" /></div>
+        <div class="field"><label>女方名字</label><input id="girlNameInput" maxlength="10" placeholder="杨颖" /></div>
+        <button class="btn block" id="namesSaveBtn">保存名字</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🔐 情侣码</div>
+        <div class="field"><label>6 位情侣码</label><input id="coupleCodeInput" maxlength="6" inputmode="numeric" placeholder="050629" /></div>
+        <div class="muted" style="margin-bottom:12px;">两台手机输入相同的情侣码才能同步聊天、定位、宠物和视频通话。</div>
+        <button class="btn block" id="coupleCodeSaveBtn">保存情侣码</button>
       </div>
       <div class="panel">
         <div class="panel-title">🎨 主界面背景</div>
@@ -1168,6 +1221,25 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 </div>
 
+<div class="overlay" id="savingsModal">
+  <div class="modal">
+    <div class="modal-title">存入金额</div>
+    <div class="muted" id="savingsDepositPlan" style="margin-bottom:10px;"></div>
+    <div class="field"><label>这次存多少</label><input id="savingsDepositAmount" type="number" min="1" inputmode="decimal" placeholder="例如：100" /></div>
+    <div class="chips">
+      <button class="chip" data-save-quick="10">10</button>
+      <button class="chip" data-save-quick="20">20</button>
+      <button class="chip" data-save-quick="50">50</button>
+      <button class="chip" data-save-quick="100">100</button>
+      <button class="chip" data-save-quick="200">200</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="savingsDepositCancel">取消</button>
+      <button class="btn" id="savingsDepositConfirm">确认存入</button>
+    </div>
+  </div>
+</div>
+
 <input type="file" id="mediaFile" accept="image/*,video/*" multiple class="hidden" />
 <input type="file" id="importFile" accept=".json,application/json" class="hidden" />
 <div class="toast" id="toast"></div>
@@ -1228,10 +1300,7 @@ const LUNAR_INFO = [
 
 const GOEASY_APPKEY = "BC-9f9424a2f944455da986064a56708751";
 const GOEASY_HOST = "hangzhou.goeasy.io";
-const CHAT_CHANNEL = "couple_chat_sy_yy";
-const LOCATION_CHANNEL = "couple_location_sy_yy";
-const PET_CHANNEL = "couple_pet_sy_yy";
-const VIDEO_CHANNEL = "couple_video_sy_yy";
+const DEFAULT_COUPLE_CODE = "050629";
 const TENCENT_MAP_KEY = "RTKBZ-GSUL3-P6K33-RMLKR-T5OB6-ZQFHY";
 const STORE_KEY = "couple_space_sy_yy_v3";
 const LEGACY_KEY = "love_site_sy_yy_v2";
@@ -1239,6 +1308,7 @@ const DB_NAME = "couple_space_db";
 
 const DEFAULT_STATE = {
   profile: { who: "boy", boyName: "邵禹", girlName: "杨颖" },
+  coupleCode: DEFAULT_COUPLE_CODE,
   auth: { accounts: [], current: null },
   weather: { me: null, partner: null, lastRemindDate: "", lastRemindKind: "" },
   period: { cycle: 28, periodDays: 5, history: ["2026-08-01"] },
@@ -1255,12 +1325,20 @@ const DEFAULT_STATE = {
   chat: [],
   notes: [],
   songs: [],
+  savings: [],
   spark: { lastChatDate: "", streak: 0, longest: 0 },
   migratedLegacy: false
 };
 
 // ============ 状态与存储 ============
 let state = loadState();
+function coupleChannel(type){
+  return "couple_" + (state.coupleCode || DEFAULT_COUPLE_CODE) + "_" + type;
+}
+function chatChannel(){ return coupleChannel("chat"); }
+function locationChannel(){ return coupleChannel("location"); }
+function petChannel(){ return coupleChannel("pet"); }
+function videoChannel(){ return coupleChannel("video"); }
 let dbPromise = null;
 let goEasy = null;
 let goEasyConnected = false;
@@ -1283,12 +1361,14 @@ let gameState = null;
 let gameCanvasActive = false;
 let noteFilter = "all";
 let noteArchiveMode = false;
+let currentSavingsPlanId = null;
 
 function loadState(){
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch(e){}
   const st = Object.assign({}, DEFAULT_STATE, saved);
   st.profile = Object.assign({}, DEFAULT_STATE.profile, saved.profile || {});
+  st.coupleCode = String(saved.coupleCode || DEFAULT_COUPLE_CODE);
   st.auth = Object.assign({ accounts: [], current: null }, saved.auth || {});
   st.weather = Object.assign({ me: null, partner: null, lastRemindDate: "", lastRemindKind: "" }, saved.weather || {});
   st.period = Object.assign({}, DEFAULT_STATE.period, saved.period || {});
@@ -1310,6 +1390,7 @@ function loadState(){
   st.chat = Array.isArray(saved.chat) ? saved.chat : [];
   st.notes = Array.isArray(saved.notes) ? saved.notes : [];
   st.songs = Array.isArray(saved.songs) ? saved.songs : [];
+  st.savings = Array.isArray(saved.savings) ? saved.savings : [];
   st.spark = Object.assign({}, DEFAULT_STATE.spark, saved.spark || {});
   return st;
 }
@@ -1451,6 +1532,7 @@ function showScreen(name){
   if(name === "video") updateSmartAssistant("video");
   if(name === "notes") renderNotes();
   if(name === "music") renderSongs();
+  if(name === "savings") renderSavings();
   if(name === "map") initMap();
   if(name === "weather"){
     renderWeather();
@@ -1543,6 +1625,9 @@ function smartTipFor(name){
   if(name === "music"){
     return { title: "把想听的歌放进来", detail: "可以粘贴音频链接，也可以直接上传本地歌曲文件。" };
   }
+  if(name === "savings"){
+    return { title: "一起攒下未来", detail: "设置目标金额，每次存入都会记录进度，离想做的事更近一点。" };
+  }
   if(name === "settings"){
     return { title: "这里是你们的空间", detail: "可以换背景、选身份，也可以导出备份保存所有回忆。" };
   }
@@ -1554,10 +1639,11 @@ function updateSmartAssistant(name){
   if(!bar || !text) return;
   const tip = smartTipFor(name || currentScreen);
   text.innerHTML = tip.title + "<small>" + tip.detail + "</small>";
-  bar.classList.remove("thinking");
-  void bar.offsetWidth;
-  bar.classList.add("thinking");
-  setTimeout(function(){ bar.classList.remove("thinking"); }, 650);
+  bar.classList.add("show");
+  clearTimeout(bar._hideTimer);
+  bar._hideTimer = setTimeout(function(){
+    bar.classList.remove("show");
+  }, 3200);
 }
 function distanceKm(lat1, lng1, lat2, lng2){
   const rad = Math.PI / 180;
@@ -1951,6 +2037,9 @@ async function updateStorageInfo(){
 // ============ 首页与纪念日 ============
 function renderHome(){
   const info = getMilestones();
+  document.getElementById("appTitle").textContent = (state.profile.boyName || "邵禹") + " ♥ " + (state.profile.girlName || "杨颖");
+  document.getElementById("homeBoyName").textContent = state.profile.boyName || "邵禹";
+  document.getElementById("homeGirlName").textContent = state.profile.girlName || "杨颖";
   document.getElementById("daysNum").textContent = info.daysTogether;
   document.getElementById("homeTogether").textContent = info.daysTogether;
   if(info.next){
@@ -2114,10 +2203,10 @@ function initGoEasy(){
       onSuccess: function(){
         goEasyConnected = true;
         setChatStatus("实时连接", true);
-        goEasy.pubsub.subscribe({ channel: CHAT_CHANNEL, onMessage: handleGoEasyMessage });
-        goEasy.pubsub.subscribe({ channel: LOCATION_CHANNEL, onMessage: handleGoEasyMessage });
-        goEasy.pubsub.subscribe({ channel: PET_CHANNEL, onMessage: handleGoEasyMessage });
-        goEasy.pubsub.subscribe({ channel: VIDEO_CHANNEL, onMessage: handleVideoSignal });
+        goEasy.pubsub.subscribe({ channel: chatChannel(), onMessage: handleGoEasyMessage });
+        goEasy.pubsub.subscribe({ channel: locationChannel(), onMessage: handleGoEasyMessage });
+        goEasy.pubsub.subscribe({ channel: petChannel(), onMessage: handleGoEasyMessage });
+        goEasy.pubsub.subscribe({ channel: videoChannel(), onMessage: handleVideoSignal });
         publishPresence("online");
         setInterval(function(){ publishPresence("online"); }, 30000);
         reportLocation();
@@ -2138,7 +2227,7 @@ function setChatStatus(text, ok){
 function publishPresence(status){
   if(!goEasy || !goEasyConnected) return;
   goEasy.pubsub.publish({
-    channel: CHAT_CHANNEL,
+    channel: chatChannel(),
     message: JSON.stringify({ type: "presence", name: myName(), who: state.profile.who, status: status, time: Date.now(), battery: ownBattery.level, network: navigator.onLine }),
     onFailed: function(){}
   });
@@ -2243,7 +2332,7 @@ function sendReadReceipts(){
   unread.forEach(function(m){ m.readByMe = true; });
   saveState();
   goEasy.pubsub.publish({
-    channel: CHAT_CHANNEL,
+    channel: chatChannel(),
     message: JSON.stringify({ type: "read", ids: ids, name: myName(), who: state.profile.who, time: Date.now() }),
     onFailed: function(){}
   });
@@ -2314,7 +2403,7 @@ function sendChat(){
   input.value = "";
   if(goEasy && goEasyConnected){
     goEasy.pubsub.publish({
-      channel: CHAT_CHANNEL,
+      channel: chatChannel(),
       message: JSON.stringify(msg),
       onSuccess: function(){ playSound("send"); },
       onFailed: function(){ toast("消息未同步，请检查网络"); }
@@ -2347,7 +2436,7 @@ function reportLocation(){
     };
     applyMyLocation(data);
     if(goEasy && goEasyConnected){
-      goEasy.pubsub.publish({ channel: LOCATION_CHANNEL, message: JSON.stringify(data), onFailed: function(){ toast("位置同步失败"); } });
+      goEasy.pubsub.publish({ channel: locationChannel(), message: JSON.stringify(data), onFailed: function(){ toast("位置同步失败"); } });
     }
   }, function(){
     document.getElementById("mapStatus").textContent = "定位失败，请授权位置";
@@ -3163,7 +3252,7 @@ document.querySelectorAll("#gameTabs button").forEach(function(btn){
 function videoSignal(action, payload){
   if(!goEasy || !goEasyConnected) return;
   goEasy.pubsub.publish({
-    channel: VIDEO_CHANNEL,
+    channel: videoChannel(),
     message: JSON.stringify({ type: "video-signal", action: action, payload: payload, from: state.profile.who, name: myName(), callId: videoCallId, time: Date.now() }),
     onFailed: function(){}
   });
@@ -3383,6 +3472,87 @@ document.getElementById("noteArchiveToggle").onclick = function(){
   noteArchiveMode = !noteArchiveMode;
   renderNotes();
 };
+
+// ============ 存钱计划 ============
+function renderSavings(){
+  const list = document.getElementById("savingsList");
+  list.innerHTML = "";
+  if(!state.savings.length){
+    list.innerHTML = '<div class="saving-empty">还没有存钱计划。<br/>写下目标金额，然后每次存一点。</div>';
+    return;
+  }
+  state.savings.slice().sort(function(a,b){ return b.createdAt - a.createdAt; }).forEach(function(plan){
+    const pct = Math.min(100, Math.round((plan.saved || 0) / (plan.target || 1) * 100));
+    const records = Array.isArray(plan.records) ? plan.records : [];
+    const today = fmtDate(new Date());
+    const month = today.slice(0,7);
+    const todaySum = records.filter(function(r){ return r.date === today; }).reduce(function(s,r){ return s + Number(r.amount || 0); }, 0);
+    const monthSum = records.filter(function(r){ return (r.date || "").slice(0,7) === month; }).reduce(function(s,r){ return s + Number(r.amount || 0); }, 0);
+    const recent = records.slice(-3).reverse().map(function(r){ return '<span>' + esc(r.date) + ' +' + Number(r.amount || 0).toFixed(0) + '</span>'; }).join("");
+    const row = document.createElement("div");
+    row.className = "saving-item";
+    row.innerHTML = '<div class="saving-head"><b>' + esc(plan.name) + '</b><span class="amount">' + Number(plan.saved || 0).toFixed(0) + ' / ' + Number(plan.target || 0).toFixed(0) + '</span></div><div class="saving-bar"><i style="width:' + pct + '%"></i></div><div class="saving-periods"><span>今日 +' + todaySum.toFixed(0) + ' 元</span><span>本月 +' + monthSum.toFixed(0) + ' 元</span></div>' + (recent ? '<div class="saving-records">' + recent + '</div>' : '') + '<div class="saving-actions"><button class="btn teal" data-save-deposit="' + esc(plan.id) + '">存入</button><button class="btn ghost" data-save-del="' + esc(plan.id) + '">删除</button></div>';
+    list.appendChild(row);
+  });
+  list.querySelectorAll("[data-save-deposit]").forEach(function(btn){
+    btn.onclick = function(){
+      const id = btn.getAttribute("data-save-deposit");
+      const plan = state.savings.find(function(p){ return p.id === id; });
+      if(!plan) return;
+      currentSavingsPlanId = id;
+      document.getElementById("savingsDepositPlan").textContent = plan.name;
+      document.getElementById("savingsDepositAmount").value = "";
+      document.getElementById("savingsModal").classList.add("show");
+    };
+  });
+  list.querySelectorAll("[data-save-del]").forEach(function(btn){
+    btn.onclick = function(){
+      const id = btn.getAttribute("data-save-del");
+      if(!confirm("删除这个存钱计划？")) return;
+      state.savings = state.savings.filter(function(p){ return p.id !== id; });
+      saveState(); renderSavings();
+    };
+  });
+}
+document.getElementById("savingsAddBtn").onclick = function(){
+  const name = document.getElementById("savingsName").value.trim();
+  const target = Number(document.getElementById("savingsTarget").value);
+  if(!name){ toast("请填写计划名称"); return; }
+  if(!target || target <= 0){ toast("请填写正确的目标金额"); return; }
+  state.savings.push({
+    id: "save" + Date.now() + Math.random().toString(16).slice(2,7),
+    name: name,
+    target: target,
+    saved: 0,
+    records: [],
+    createdAt: Date.now()
+  });
+  saveState(); renderSavings();
+  document.getElementById("savingsName").value = "";
+  document.getElementById("savingsTarget").value = "";
+  toast("存钱计划已创建");
+};
+document.getElementById("savingsDepositConfirm").onclick = function(){
+  const plan = state.savings.find(function(p){ return p.id === currentSavingsPlanId; });
+  if(!plan) return;
+  const n = Number(document.getElementById("savingsDepositAmount").value);
+  if(!n || n <= 0){ toast("请输入正确的金额"); return; }
+  plan.saved = (plan.saved || 0) + n;
+  if(!Array.isArray(plan.records)) plan.records = [];
+  plan.records.push({ date: fmtDate(new Date()), amount: n, createdAt: Date.now() });
+  saveState(); renderSavings();
+  document.getElementById("savingsModal").classList.remove("show");
+  toast("已存入 " + n.toFixed(0) + " 元");
+};
+document.getElementById("savingsDepositCancel").onclick = function(){
+  document.getElementById("savingsModal").classList.remove("show");
+  currentSavingsPlanId = null;
+};
+document.querySelectorAll("[data-save-quick]").forEach(function(btn){
+  btn.onclick = function(){
+    document.getElementById("savingsDepositAmount").value = btn.getAttribute("data-save-quick");
+  };
+});
 
 // ============ 音乐歌单 ============
 let currentSongId = null;
@@ -3785,7 +3955,7 @@ function levelPet(){
 function publishPet(syncTs){
   if(goEasy && goEasyConnected){
     goEasy.pubsub.publish({
-      channel: PET_CHANNEL,
+      channel: petChannel(),
       message: JSON.stringify(Object.assign({ type: "pet" }, state.pet, { syncTs: syncTs })),
       onFailed: function(){}
     });
@@ -4098,6 +4268,9 @@ function renderSettings(){
     const active = mode === "custom" ? state.background.mode === "custom" : state.background.mode === mode;
     b.classList.toggle("active", active);
   });
+  document.getElementById("boyNameInput").value = state.profile.boyName || "邵禹";
+  document.getElementById("girlNameInput").value = state.profile.girlName || "杨颖";
+  document.getElementById("coupleCodeInput").value = state.coupleCode || DEFAULT_COUPLE_CODE;
   applyBackground();
   renderAiSettings();
 }
@@ -4108,6 +4281,27 @@ document.querySelectorAll("#identitySeg button").forEach(function(btn){
     toast("当前身份：" + myName());
   };
 });
+document.getElementById("namesSaveBtn").onclick = function(){
+  const boy = document.getElementById("boyNameInput").value.trim();
+  const girl = document.getElementById("girlNameInput").value.trim();
+  if(!boy || !girl){ toast("名字不能为空"); return; }
+  state.profile.boyName = boy;
+  state.profile.girlName = girl;
+  saveState(); renderSettings(); renderHome();
+  toast("名字已更新");
+};
+document.getElementById("coupleCodeSaveBtn").onclick = function(){
+  const code = document.getElementById("coupleCodeInput").value.trim();
+  if(!/^\d{6}$/.test(code)){ toast("情侣码必须是 6 位数字"); return; }
+  state.coupleCode = code;
+  saveState();
+  if(goEasyConnected && goEasy){
+    try{ goEasy.disconnect && goEasy.disconnect(); }catch(e){}
+    goEasyConnected = false;
+    initGoEasy();
+  }
+  toast("情侣码已保存：" + code);
+};
 document.querySelectorAll("#bgSeg button").forEach(function(btn){
   btn.onclick = function(){
     const mode = btn.getAttribute("data-bg");
