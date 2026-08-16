@@ -189,6 +189,13 @@ input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);}
 
 /* 地图 */
 .map-wrap{height:min(56vh,460px);min-height:340px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:#edf2f4;touch-action:none;position:relative;}
+.partner-addr-card{margin-top:12px;background:#fff;border:1px solid #f0d8e1;border-radius:var(--radius);padding:12px 14px;box-shadow:0 8px 22px rgba(116,60,82,.10);animation:fadeIn .3s ease;}
+.partner-addr-card.hidden{display:none;}
+.pa-top{display:flex;align-items:center;gap:8px;}
+.pa-top b{flex:1;min-width:0;font-size:14px;color:var(--deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pa-top button{width:34px;height:34px;border-radius:50%;background:#f6edf1;color:#c45555;font-size:17px;display:inline-flex;align-items:center;justify-content:center;}
+.pa-addr{font-size:14px;color:var(--ink);line-height:1.6;margin:7px 0 5px;word-break:break-word;}
+.pa-meta{font-size:12px;color:var(--muted);margin-bottom:9px;}
 .loc-row{display:flex;gap:10px;margin-top:10px;}
 .loc-card{flex:1;background:#f7fbfa;border:1px solid #d6e8e4;border-radius:var(--radius);padding:10px;}
 .loc-card.girl{background:#fdf3f7;border-color:#f0d2de;}
@@ -854,6 +861,13 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
       <div class="panel">
         <div class="panel-title">📍 双人位置 <span class="tag" id="mapStatus">定位中…</span></div>
         <div class="map-wrap" id="map"></div>
+        <button class="btn gold" id="locFindPartner" style="margin-top:12px;width:100%;">告诉我 TA 在哪</button>
+        <div class="partner-addr-card hidden" id="partnerAddrCard">
+          <div class="pa-top"><b id="paName">TA 的位置</b><button id="paClose" title="关闭">×</button></div>
+          <div class="pa-addr" id="paAddress">正在获取具体地址…</div>
+          <div class="pa-meta" id="paMeta"></div>
+          <button class="btn ghost" id="paOpenMap" style="width:100%;">在地图打开 TA 的位置</button>
+        </div>
         <div class="row" style="margin-top:12px;">
           <button class="btn teal" id="locRefresh">刷新我的位置</button>
           <button class="btn ghost" id="locNotify">告诉 TA 我在哪</button>
@@ -3428,6 +3442,95 @@ document.getElementById("locOpenMap").onclick = function(){
     return;
   }
   const url = "https://uri.amap.com/marker?position=" + me.lng + "," + me.lat + "&name=" + encodeURIComponent(myName() + "的位置");
+  window.open(url, "_blank");
+};
+function partnerLocation(){
+  return state.profile.who === "boy" ? state.girlLocation : state.boyLocation;
+}
+function haversineKm(aLat, aLng, bLat, bLng){
+  const R = 6371;
+  const dLat = (bLat - aLat) * Math.PI / 180;
+  const dLng = (bLng - aLng) * Math.PI / 180;
+  const s = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+async function fetchAddress(lat, lng){
+  const url = "https://apis.map.qq.com/ws/geocoder/v1/?location=" + lat + "," + lng + "&key=" + TENCENT_MAP_KEY + "&get_poi=1";
+  const data = await fetchJsonWithTimeout(url, 8000);
+  if(data && data.status === 0 && data.result){
+    const parts = [];
+    if(data.result.address) parts.push(data.result.address);
+    const poi = data.result.pois && data.result.pois[0] && data.result.pois[0].title;
+    if(poi && parts.join("").indexOf(poi) === -1) parts.push(poi);
+    return parts.join("，");
+  }
+  return "";
+}
+function partnerNameText(){
+  return state.profile.who === "boy" ? (state.profile.girlName || "杨颖") : (state.profile.boyName || "邵禹");
+}
+async function showPartnerAddress(p){
+  const card = document.getElementById("partnerAddrCard");
+  if(!card) return;
+  document.getElementById("paName").textContent = partnerNameText() + " 的位置";
+  document.getElementById("paAddress").textContent = "正在获取具体地址…";
+  const me = state.profile.who === "boy" ? state.boyLocation : state.girlLocation;
+  const acc = p.accuracy ? p.accuracy + " 米" : "未知";
+  let meta = "";
+  if(me){
+    const km = haversineKm(me.lat, me.lng, p.lat, p.lng);
+    meta = "距离你约 " + (km < 1 ? Math.max(1, Math.round(km * 1000)) + " 米" : km.toFixed(1) + " 公里") + " · 精度 " + acc;
+  }else{
+    meta = "定位精度 " + acc;
+  }
+  meta += " · " + pad(new Date(p.time).getHours()) + ":" + pad(new Date(p.time).getMinutes());
+  document.getElementById("paMeta").textContent = meta;
+  card.classList.remove("hidden");
+  try{
+    const addr = await fetchAddress(p.lat, p.lng);
+    document.getElementById("paAddress").textContent = addr || "未获取到具体地址，纬度 " + p.lat.toFixed(5) + " · 经度 " + p.lng.toFixed(5);
+  }catch(e){
+    document.getElementById("paAddress").textContent = "地址获取失败，纬度 " + p.lat.toFixed(5) + " · 经度 " + p.lng.toFixed(5);
+  }
+}
+function focusPartnerOnMap(){
+  const p = partnerLocation();
+  if(!p){
+    toast("TA 还没定位，等 TA 刷新位置后再试");
+    return;
+  }
+  showPartnerAddress(p);
+  if(map){
+    try{
+      map.setCenter(new TMap.LatLng(p.lat, p.lng));
+      map.setZoom(17);
+    }catch(e){}
+    return;
+  }
+  initMap();
+  let tries = 0;
+  const timer = setInterval(function(){
+    tries++;
+    if(map){
+      clearInterval(timer);
+      try{
+        map.setCenter(new TMap.LatLng(p.lat, p.lng));
+        map.setZoom(17);
+      }catch(e){}
+    }else if(tries >= 6){
+      clearInterval(timer);
+    }
+  }, 500);
+}
+document.getElementById("locFindPartner").onclick = focusPartnerOnMap;
+document.getElementById("paClose").onclick = function(){
+  document.getElementById("partnerAddrCard").classList.add("hidden");
+};
+document.getElementById("paOpenMap").onclick = function(){
+  const p = partnerLocation();
+  if(!p) return;
+  const url = "https://uri.amap.com/marker?position=" + p.lng + "," + p.lat + "&name=" + encodeURIComponent(partnerNameText() + "的位置");
   window.open(url, "_blank");
 };
 
