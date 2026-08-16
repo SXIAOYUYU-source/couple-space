@@ -217,6 +217,45 @@ async function handleTest(request, env){
   }
 }
 
+async function handleLocationPut(request, env){
+  try{
+    const data = await request.json();
+    const coupleCode = String(data.coupleCode || "").trim();
+    const who = data.who === "boy" ? "boy" : (data.who === "girl" ? "girl" : "");
+    const lat = Number(data.lat);
+    const lng = Number(data.lng);
+    if(!coupleCode || !who || !isFinite(lat) || !isFinite(lng)){
+      return json({ ok: false, error: "参数不完整" }, 400);
+    }
+    const location = {
+      who: who,
+      lat: lat,
+      lng: lng,
+      accuracy: Math.max(0, Math.round(Number(data.accuracy) || 0)),
+      time: Number(data.time) || Date.now()
+    };
+    await env.PUSH_KV.put("loc:" + coupleCode + ":" + who, JSON.stringify(location));
+    return json({ ok: true, saved: true });
+  }catch(err){
+    return json({ ok: false, error: String(err && err.message || err) }, 500);
+  }
+}
+
+async function handleLocationGet(request, env){
+  try{
+    const url = new URL(request.url);
+    const coupleCode = String(url.searchParams.get("coupleCode") || "").trim();
+    const who = url.searchParams.get("who") === "boy" ? "boy" : (url.searchParams.get("who") === "girl" ? "girl" : "");
+    if(!coupleCode || !who){
+      return json({ ok: false, error: "参数不完整" }, 400);
+    }
+    const raw = await env.PUSH_KV.get("loc:" + coupleCode + ":" + who);
+    return json({ ok: true, location: raw ? JSON.parse(raw) : null });
+  }catch(err){
+    return json({ ok: false, error: String(err && err.message || err) }, 500);
+  }
+}
+
 export default {
   async fetch(request, env){
     if(request.method === "OPTIONS"){
@@ -234,6 +273,12 @@ export default {
     }
     if(url.pathname === "/api/push/test" && request.method === "POST"){
       return handleTest(request, env);
+    }
+    if(url.pathname === "/api/location/put" && request.method === "POST"){
+      return handleLocationPut(request, env);
+    }
+    if(url.pathname === "/api/location/get" && request.method === "GET"){
+      return handleLocationGet(request, env);
     }
     return json({ ok: false, error: "not found" }, 404);
   }

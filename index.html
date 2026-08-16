@@ -1784,7 +1784,10 @@ function showScreen(name){
   if(name === "music") renderSongs();
   if(name === "savings") renderSavings();
   if(name === "salary") renderSalary();
-  if(name === "map") initMap();
+  if(name === "map"){
+    initMap();
+    fetchPartnerLocationFromServer();
+  }
   if(name === "weather"){
     renderWeather();
     updateWeather();
@@ -2489,6 +2492,7 @@ function initGoEasy(){
         if(presenceTimer) clearInterval(presenceTimer);
         presenceTimer = setInterval(function(){ publishPresence("online"); }, 30000);
         reportLocation();
+        setTimeout(function(){ publishLocationRequest(); fetchPartnerLocationFromServer(); }, 600);
         setTimeout(function(){ publishChatHistory(); publishHistoryRequest(); }, 800);
         setTimeout(function(){ publishStateSync(true); publishMediaInventory(); publishSettingsInventory(); }, 1200);
       },
@@ -2539,6 +2543,23 @@ function publishPresence(status){
   goEasy.pubsub.publish({
     channel: chatChannel(),
     message: JSON.stringify({ type: "presence", name: myName(), who: state.profile.who, status: status, time: Date.now(), battery: ownBattery.level, network: navigator.onLine }),
+    onFailed: function(){}
+  });
+}
+function publishLocationRequest(){
+  if(!goEasy || !goEasyConnected) return;
+  goEasy.pubsub.publish({
+    channel: locationChannel(),
+    message: JSON.stringify({ type: "location_request", name: myName(), who: state.profile.who, time: Date.now() }),
+    onFailed: function(){}
+  });
+}
+function respondLocationRequest(){
+  const data = state.myLocation;
+  if(!data || !goEasy || !goEasyConnected) return;
+  goEasy.pubsub.publish({
+    channel: locationChannel(),
+    message: JSON.stringify(data),
     onFailed: function(){}
   });
 }
@@ -2640,6 +2661,7 @@ function handleGoEasyMessage(message){
     const data = JSON.parse(message.content);
     if(data.type === "chat") appendChat(data, true);
     if(data.type === "location") applyPartnerLocation(data);
+    if(data.type === "location_request") respondLocationRequest();
     if(data.type === "pet") applyPetSync(data);
     if(data.type === "presence") updatePartnerStatus(data);
     if(data.type === "read") handleReadReceipt(data);
@@ -3399,6 +3421,7 @@ function reportLocation(recenter){
       accuracy: Math.round(pos.coords.accuracy), time: Date.now()
     };
     applyMyLocation(data, recenter !== false);
+    syncLocationToServer(data);
     if(goEasy && goEasyConnected){
       goEasy.pubsub.publish({ channel: locationChannel(), message: JSON.stringify(data), onFailed: function(){ toast("位置同步失败"); } });
     }
@@ -3409,6 +3432,7 @@ function reportLocation(recenter){
 function applyMyLocation(data, recenter){
   state.myLocation = data;
   state[data.who + "Location"] = data;
+  saveState();
   if(data.who === "boy"){
     document.getElementById("locBoy").textContent = fmtLocation(data);
   }else{
@@ -3421,6 +3445,7 @@ function applyMyLocation(data, recenter){
 function applyPartnerLocation(data){
   if(data.who === state.profile.who) return;
   state[data.who + "Location"] = data;
+  saveState();
   if(data.who === "boy"){
     document.getElementById("locBoy").textContent = fmtLocation(data);
   }else{
@@ -3431,7 +3456,7 @@ function applyPartnerLocation(data){
 }
 function fmtLocation(data){
   const t = new Date(data.time);
-  return "纬度 " + data.lat.toFixed(5) + " · 经度 " + data.lng.toFixed(5) + "<br/>精度 " + data.accuracy + " 米 · " + pad(t.getHours()) + ":" + pad(t.getMinutes());
+  return "纬度 " + data.lat.toFixed(5) + " · 经度 " + data.lng.toFixed(5) + " · 精度 " + data.accuracy + " 米 · " + pad(t.getHours()) + ":" + pad(t.getMinutes());
 }
 document.getElementById("locRefresh").onclick = function(){ reportLocation(); };
 document.getElementById("locNotify").onclick = function(){ reportLocation(); };
@@ -3523,7 +3548,9 @@ function focusPartnerOnMap(){
     }
   }, 500);
 }
-document.getElementById("locFindPartner").onclick = focusPartnerOnMap;
+document.getElementById("locFindPartner").onclick = function(){
+  fetchPartnerLocationFromServer().then(focusPartnerOnMap);
+};
 document.getElementById("paClose").onclick = function(){
   document.getElementById("partnerAddrCard").classList.add("hidden");
 };
@@ -3612,7 +3639,16 @@ function drawMapMarkers(keepView){
     map.setZoom(points.length > 1 ? 13 : 15);
   }
 }
-setInterval(function(){ if(currentScreen === "map") reportLocation(false); }, 30000);
+setInterval(function(){
+  reportLocation(false);
+  if(currentScreen === "map") fetchPartnerLocationFromServer();
+}, 15000);
+window.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible"){
+    reportLocation(false);
+    fetchPartnerLocationFromServer();
+  }
+});
 
 // ============ 双人天气 ============
 let weatherTimer = null;
@@ -5631,6 +5667,52 @@ function pushFetch(path, data){
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data || {})
   }).then(function(res){ return res.json().catch(function(){ return {}; }); });
+}
+function pushGet(path){
+  const url = pushApi(path);
+  if(!url) return Promise.reject(new Error("未配置推送服务器"));
+  return fetch(url, { method: "GET" }).then(function(res){
+    return res.json().catch(function(){ return {}; });
+  });
+}
+function syncLocationToServer(data){
+  if(!data) return;
+  pushFetch("/api/location/put", {
+    coupleCode: state.coupleCode || DEFAULT_COUPLE_CODE,
+    who: data.who,
+    lat: data.lat,
+    lng: data.lng,
+    accuracy: data.accuracy,
+    time: data.time
+  }).catch(function(){});
+}
+async function fetchPartnerLocationFromServer(){
+  const server = getPushServer();
+  if(!server) return;
+  const who = state.profile.who === "boy" ? "girl" : "boy";
+  try{
+    const res = await pushGet("/api/location/get?coupleCode=" + encodeURIComponent(state.coupleCode || DEFAULT_COUPLE_CODE) + "&who=" + who);
+    const loc = res && res.location;
+    if(!loc) return;
+    const current = who === "boy" ? state.boyLocation : state.girlLocation;
+    if(!current || Number(loc.time) > Number(current.time || 0)){
+      applyRemoteLocation(loc);
+    }
+  }catch(e){}
+}
+function applyRemoteLocation(loc){
+  if(!loc || !loc.who) return;
+  state[loc.who + "Location"] = loc;
+  saveState();
+  if(loc.who === "boy"){
+    const el = document.getElementById("locBoy");
+    if(el) el.innerHTML = fmtLocation(loc);
+  }else{
+    const el = document.getElementById("locGirl");
+    if(el) el.innerHTML = fmtLocation(loc);
+  }
+  if(currentScreen === "map") drawMapMarkers(false);
+  updateWeather();
 }
 function urlBase64ToUint8Array(base64String){
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
