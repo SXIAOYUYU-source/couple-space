@@ -3257,11 +3257,11 @@ async function handleSettingsRequest(data){
   }
 }
 async function syncSettingBlob(key, blob){
-  if(!goEasy || !goEasyConnected) return;
-  if(!blob) return;
+  if(!goEasy || !goEasyConnected) return false;
+  if(!blob) return false;
   if(!blob.size || blob.size > MAX_MEDIA_SYNC_BYTES){
     toast("这个文件超过 5MB，只保存在本机");
-    return;
+    return false;
   }
   const blobBase64 = await blobToBase64(blob);
   publishChunkedSync("setting-blob", {
@@ -3271,6 +3271,7 @@ async function syncSettingBlob(key, blob){
     key: key,
     blobBase64: blobBase64
   });
+  return true;
 }
 async function applyRemoteSettingBlob(payload){
   if(!payload || !payload.key || payload.uid === myUid()) return;
@@ -5675,6 +5676,16 @@ function pushGet(path){
     return res.json().catch(function(){ return {}; });
   });
 }
+async function testPushServerConnection(){
+  const server = getPushServer();
+  if(!server) return false;
+  try{
+    const res = await pushGet("/");
+    return !!(res && res.ok);
+  }catch(e){
+    return false;
+  }
+}
 function syncLocationToServer(data){
   if(!data) return;
   pushFetch("/api/location/put", {
@@ -5944,6 +5955,12 @@ document.getElementById("pushSaveBtn").onclick = async function(){
   state.push.enabled = true;
   saveState();
   updatePushStatus("正在开启…");
+  const connected = await testPushServerConnection();
+  if(!connected){
+    updatePushStatus("无法连接服务器，请检查地址或网络");
+    toast("服务器连不上");
+    return;
+  }
   await setupOfflinePush();
   toast("离线推送已保存");
 };
@@ -6008,7 +6025,11 @@ function renderSettings(){
   document.getElementById("girlNameInput").value = state.profile.girlName || "杨颖";
   document.getElementById("coupleCodeInput").value = state.coupleCode || DEFAULT_COUPLE_CODE;
   document.getElementById("pushServerInput").value = (state.push && state.push.server) || "";
-  updatePushStatus(state.push && state.push.enabled ? (state.push.server ? "离线推送已开启" : "已关闭") : (state.push && state.push.server ? "已关闭" : ""));
+  if(state.push && state.push.server){
+    updatePushStatus(state.push.enabled ? "离线推送已开启" : "已关闭");
+  }else{
+    updatePushStatus("未配置服务器，退出 App 后收不到消息");
+  }
   applyBackground();
   renderAiSettings();
 }
@@ -6151,20 +6172,22 @@ document.getElementById("coupleBoyAvatarFile").onchange = async function(e){
   if(!file) return;
   const blob = await compressImage(file);
   await saveSetting("coupleBoyAvatar", blob);
-  syncSettingBlob("coupleBoyAvatar", blob);
+  const sent = await syncSettingBlob("coupleBoyAvatar", blob);
+  publishSettingsInventory();
   state.couple.boyAvatar = true;
   saveState(); await applyCoupleVisuals(); e.target.value = "";
-  toast("邵禹头像已更新");
+  toast(sent ? "邵禹头像已更新，对方可见" : "头像已保存，连接后自动同步");
 };
 document.getElementById("coupleGirlAvatarFile").onchange = async function(e){
   const file = e.target.files && e.target.files[0];
   if(!file) return;
   const blob = await compressImage(file);
   await saveSetting("coupleGirlAvatar", blob);
-  syncSettingBlob("coupleGirlAvatar", blob);
+  const sent = await syncSettingBlob("coupleGirlAvatar", blob);
+  publishSettingsInventory();
   state.couple.girlAvatar = true;
   saveState(); await applyCoupleVisuals(); e.target.value = "";
-  toast("杨颖头像已更新");
+  toast(sent ? "杨颖头像已更新，对方可见" : "头像已保存，连接后自动同步");
 };
 document.getElementById("coupleBgFile").onchange = async function(e){
   const file = e.target.files && e.target.files[0];
