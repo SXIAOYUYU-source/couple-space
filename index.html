@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>小禹和小颖的专属空间</title>
 <meta name="description" content="小禹和小颖的专属空间" />
 <meta name="theme-color" content="#f0527f" />
@@ -29,6 +29,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
 body{
   font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
   background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;
@@ -47,7 +48,8 @@ body.custom-bg::before{background:rgba(250,246,248,.72);}
 .app{position:relative;z-index:1;max-width:680px;margin:0 auto;min-height:100vh;padding-bottom:calc(148px + env(safe-area-inset-bottom));}
 
 button{font-family:inherit;border:none;cursor:pointer;color:inherit;}
-input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
+button,input,select,textarea{touch-action:manipulation;}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);}
 .hidden{display:none !important;}
 
 .app-header{
@@ -123,12 +125,15 @@ input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
 @media (max-width:380px){.quick-grid{grid-template-columns:1fr 1fr;}}
 
 /* 聊天 */
-.chat-box{height:calc(100vh - 190px);min-height:420px;display:flex;flex-direction:column;background:#fff;
-  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
-.chat-head{display:flex;align-items:center;gap:8px;padding:11px 12px;background:rgba(255,255,255,.92);
-  border-bottom:1px solid #f1dfe6;font-size:13px;font-weight:700;color:var(--deep);}
-.chat-head-main{display:flex;flex-direction:column;gap:3px;min-width:0;}
-.chat-room{font-size:13px;color:var(--deep);}
+.chat-box{height:calc(100vh - 190px);height:calc(100dvh - 158px);min-height:440px;display:flex;flex-direction:column;background:#fff;
+  border:1px solid rgba(222,204,214,.7);border-radius:14px;overflow:hidden;box-shadow:0 12px 30px rgba(116,60,82,.12);}
+.chat-head{display:flex;align-items:center;gap:9px;padding:12px 12px 10px;background:rgba(255,255,255,.96);
+  border-bottom:1px solid #f3e7ec;font-size:13px;font-weight:700;color:var(--deep);}
+.chat-avatar{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;
+  background:linear-gradient(135deg,var(--pink),#a94a70);color:#fff;box-shadow:0 5px 12px rgba(224,82,127,.25);flex:0 0 auto;}
+.chat-head-main{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
+.chat-room{font-size:14px;color:var(--deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-sub{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap;}
 .partner-status{font-size:10px;color:#2f8f88;font-weight:700;display:inline-flex;align-items:center;gap:4px;}
 .partner-status::before{content:"";width:6px;height:6px;border-radius:50%;background:#35b79d;}
 .partner-status.off{color:#a18a95;}
@@ -137,26 +142,53 @@ input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
 .spark-status{font-size:10px;color:#e0527f;font-weight:800;}
 .chat-head .status{margin-left:auto;font-size:11px;font-weight:600;color:var(--teal);}
 .chat-head .status.off{color:#c45555;}
-.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#fff,#fdf8fa);}
+.chat-typing{min-height:20px;padding:3px 14px;font-size:12px;color:#9b7d8d;background:#fdfbfc;border-bottom:1px solid #f3e6ec;display:flex;align-items:center;}
+.chat-typing:empty{display:none;}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 12px 16px;display:flex;flex-direction:column;gap:11px;background:linear-gradient(180deg,#f9f6f8,#f2eef2);}
+.chat-day{display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0 2px;font-size:11px;color:var(--muted);}
+.chat-day::before,.chat-day::after{content:"";flex:1;height:1px;background:#e6dbe1;}
+.chat-day span{background:rgba(255,255,255,.86);padding:2px 10px;border-radius:99px;box-shadow:0 1px 3px rgba(116,60,82,.05);}
 .msg-wrap{display:flex;align-items:flex-end;gap:7px;animation:msgIn .25s ease both;}
 .msg-wrap.mine{flex-direction:row-reverse;}
+.msg-wrap.grouped{margin-top:-7px;}
+.msg-wrap.grouped .msg-avatar{visibility:hidden;}
 .msg-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;
   background:linear-gradient(135deg,var(--pink),var(--gold));color:#fff;flex:0 0 auto;overflow:hidden;}
 .msg-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;}
 .msg-wrap.theirs .msg-avatar{background:linear-gradient(135deg,#9b7d8d,#6f5964);}
-.msg{max-width:74%;padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.55;word-break:break-word;position:relative;}
-.msg.mine{background:linear-gradient(135deg,#e0527f,#cb4f7b);color:#fff;border-bottom-right-radius:4px;box-shadow:0 5px 12px rgba(224,82,127,.18);}
-.msg.theirs{background:#fff;color:var(--ink);border:1px solid #eee1e6;border-bottom-left-radius:4px;box-shadow:0 4px 10px rgba(116,60,82,.06);}
+.msg{max-width:76%;padding:9px 13px;border-radius:16px;font-size:15px;line-height:1.55;word-break:break-word;position:relative;box-shadow:0 3px 8px rgba(116,60,82,.07);}
+.msg.mine{background:linear-gradient(135deg,#e0527f,#c94e79);color:#fff;border-bottom-right-radius:5px;box-shadow:0 5px 14px rgba(224,82,127,.2);}
+.msg.theirs{background:#fff;color:var(--ink);border:1px solid #eadfe6;border-bottom-left-radius:5px;box-shadow:0 4px 12px rgba(116,60,82,.06);}
+.msg::after{content:"";position:absolute;bottom:7px;width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;}
+.msg.mine::after{right:-5px;border-left:7px solid #ce5079;}
+.msg.theirs::after{left:-5px;border-right:7px solid #fff;}
 .msg .meta{font-size:10px;opacity:.72;margin-top:4px;}
+.msg-wrap.grouped .msg .meta{display:none;}
 .msg.mine .meta{text-align:right;}
-.chat-quick{display:flex;gap:6px;overflow-x:auto;padding:7px 10px 0;border-top:1px solid #f5e9ee;background:#fff;}
-.chat-quick button{white-space:nowrap;background:#f7edf1;border:1px solid #ead5de;color:#8e566b;border-radius:99px;padding:5px 10px;font-size:11px;font-weight:700;}
-.chat-input-row{display:flex;gap:8px;padding:10px;border-top:1px solid #f1dfe6;background:#fff;}
-.chat-input-row input{flex:1;border:1px solid #dfcbd5;border-radius:var(--radius);padding:10px 12px;}
+.chat-quick{display:flex;gap:7px;overflow-x:auto;padding:9px 10px 8px;border-top:1px solid #f5e9ee;background:#fff;scrollbar-width:none;}
+.chat-quick::-webkit-scrollbar{display:none;}
+.chat-quick button{white-space:nowrap;background:#fbf3f6;border:1px solid #f0d9e2;color:#a04a6e;border-radius:99px;padding:7px 13px;font-size:12px;font-weight:700;box-shadow:0 2px 5px rgba(160,74,110,.06);}
+.chat-input-row{display:flex;gap:8px;padding:10px 10px 12px;border-top:1px solid #f1dfe6;background:#fff;}
+.chat-input-row input{flex:1;min-width:0;border:1px solid #e3d3db;border-radius:22px;padding:10px 15px;background:#faf7f8;outline:none;}
+.chat-input-row input:focus{border-color:#e5a2bb;background:#fff;box-shadow:0 0 0 3px rgba(224,82,127,.08);}
+.chat-input-row .btn{border-radius:22px;padding:0 18px;background:linear-gradient(135deg,var(--pink),#c94e79);box-shadow:0 4px 12px rgba(224,82,127,.22);}
 @keyframes msgIn{from{opacity:0;transform:translateY(5px) scale(.98);}to{opacity:1;transform:none;}}
 
+/* 新消息弹窗 */
+.msg-popup{position:fixed;top:14px;left:0;right:0;z-index:220;display:flex;justify-content:center;padding:0 12px;pointer-events:none;opacity:0;transform:translateY(-16px);transition:transform .28s cubic-bezier(.22,.8,.24,1),opacity .24s ease;}
+.msg-popup.show{opacity:1;transform:none;pointer-events:auto;}
+.msg-popup-card{width:100%;max-width:420px;background:#fff;border-radius:14px;border:1px solid #f0dce5;box-shadow:0 18px 44px rgba(80,25,50,.24);overflow:hidden;}
+.msg-popup-head{display:flex;align-items:center;gap:10px;padding:12px 14px 8px;}
+.msg-popup-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;background:linear-gradient(135deg,var(--pink),var(--gold));color:#fff;flex:0 0 auto;box-shadow:0 4px 10px rgba(224,82,127,.22);}
+.msg-popup-title{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.msg-popup-title b{font-size:14px;color:var(--deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.msg-popup-title span{font-size:11px;color:var(--muted);}
+.msg-popup-card p{font-size:14px;line-height:1.6;color:var(--ink);padding:2px 14px 10px;word-break:break-word;max-height:72px;overflow:hidden;}
+.msg-popup-actions{display:flex;gap:8px;padding:10px 14px 12px;border-top:1px solid #f5e9ee;background:#fdfafb;}
+.msg-popup-actions .btn{flex:1;border-radius:20px;}
+
 /* 地图 */
-.map-wrap{height:340px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:#edf2f4;}
+.map-wrap{height:min(56vh,460px);min-height:340px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:#edf2f4;touch-action:none;position:relative;}
 .loc-row{display:flex;gap:10px;margin-top:10px;}
 .loc-card{flex:1;background:#f7fbfa;border:1px solid #d6e8e4;border-radius:var(--radius);padding:10px;}
 .loc-card.girl{background:#fdf3f7;border-color:#f0d2de;}
@@ -744,16 +776,20 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
     <section class="screen" id="sc-chat">
       <div class="chat-box">
         <div class="chat-head">
+          <span class="chat-avatar">💬</span>
           <div class="chat-head-main">
-            <span class="chat-room">💬 小禹和小颖的聊天室</span>
-            <span class="partner-status off" id="partnerStatus">对方离线</span>
-            <span class="device-status" id="deviceStatus">对方状态未同步</span>
-            <span class="spark-status" id="sparkStatus">🔥 0 天</span>
+            <span class="chat-room">小禹和小颖的聊天室</span>
+            <span class="chat-sub">
+              <span class="partner-status off" id="partnerStatus">对方离线</span>
+              <span class="device-status" id="deviceStatus">对方状态未同步</span>
+              <span class="spark-status" id="sparkStatus">🔥 0 天</span>
+            </span>
           </div>
           <button class="icon-btn chat-video-btn" id="chatReconnectBtn" title="重新连接">🔄</button>
           <button class="icon-btn chat-video-btn" id="videoCallBtn" title="视频通话">📹</button>
           <span class="status" id="chatStatus">连接中…</span>
         </div>
+        <div class="chat-typing" id="chatTyping"></div>
         <div class="chat-msgs" id="chatMessages"></div>
         <div class="chat-quick" id="chatQuick">
           <button data-quick="想你啦">想你啦</button>
@@ -768,6 +804,25 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </section>
 
+    <!-- 新消息弹窗 -->
+    <div class="msg-popup" id="msgPopup">
+      <div class="msg-popup-card">
+        <div class="msg-popup-head">
+          <span class="msg-popup-avatar" id="msgPopupAvatar">💬</span>
+          <div class="msg-popup-title">
+            <b id="msgPopupTitle">新消息</b>
+            <span id="msgPopupTime"></span>
+          </div>
+          <button class="icon-btn" id="msgPopupClose" title="关闭">✕</button>
+        </div>
+        <p id="msgPopupText"></p>
+        <div class="msg-popup-actions">
+          <button class="btn ghost" id="msgPopupClose2">忽略</button>
+          <button class="btn" id="msgPopupOpen">打开聊天</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 地图 -->
     <section class="screen" id="sc-map">
       <div class="panel">
@@ -777,6 +832,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
           <button class="btn teal" id="locRefresh">刷新我的位置</button>
           <button class="btn ghost" id="locNotify">告诉 TA 我在哪</button>
         </div>
+        <button class="btn ghost" id="locOpenMap" style="margin-top:10px;width:100%;">在手机地图打开我的位置</button>
         <div class="loc-row">
           <div class="loc-card girl"><b>杨颖</b><span id="locGirl">等待定位…</span></div>
           <div class="loc-card"><b>邵禹</b><span id="locBoy">等待定位…</span></div>
@@ -1357,6 +1413,8 @@ const MAX_MEDIA_SYNC_BYTES = 5 * 1024 * 1024;
 let partnerPresence = { online: false, lastSeen: 0 };
 let ownBattery = { level: null, charging: false };
 let map = null;
+let mapGestureLock = false;
+let mapRetry = 0;
 let localStream = null;
 let peerConnection = null;
 let videoCallId = null;
@@ -1366,6 +1424,9 @@ let mediaUrls = [];
 let coupleVisualUrls = [];
 let currentMediaId = null;
 let chatAvatarCache = { boy: null, girl: null };
+let partnerTyping = false;
+let typingHideTimer = null;
+let typingPublishTimer = null;
 let annivTimer = null;
 let currentScreen = "home";
 let installPrompt = null;
@@ -1852,6 +1913,9 @@ document.getElementById("logoutBtn").onclick = function(){
 document.getElementById("welcomeEnter").onclick = function(){
   document.getElementById("welcome").style.display = "none";
   playSound("section");
+  if("Notification" in window && Notification.permission === "default"){
+    Notification.requestPermission().catch(function(){});
+  }
   renderHome();
   initGoEasy();
   reportLocation();
@@ -2302,6 +2366,24 @@ function publishPresence(status){
     onFailed: function(){}
   });
 }
+function publishTyping(){
+  if(!goEasy || !goEasyConnected) return;
+  goEasy.pubsub.publish({
+    channel: chatChannel(),
+    message: JSON.stringify({ type: "typing", name: myName(), who: state.profile.who, time: Date.now() }),
+    onFailed: function(){}
+  });
+}
+function handleTyping(data){
+  if(!data || data.who === state.profile.who) return;
+  partnerTyping = true;
+  updateTypingDisplay();
+  clearTimeout(typingHideTimer);
+  typingHideTimer = setTimeout(function(){
+    partnerTyping = false;
+    updateTypingDisplay();
+  }, 2500);
+}
 function updatePartnerStatus(data){
   if(data.who === state.profile.who) return;
   partnerPresence.online = data.status === "online";
@@ -2385,6 +2467,7 @@ function handleGoEasyMessage(message){
     if(data.type === "pet") applyPetSync(data);
     if(data.type === "presence") updatePartnerStatus(data);
     if(data.type === "read") handleReadReceipt(data);
+    if(data.type === "typing") handleTyping(data);
     if(data.type === "history") mergeChatHistory(data);
     if(data.type === "history_request") respondHistoryRequest(data);
   }catch(e){}
@@ -2400,7 +2483,14 @@ function appendChat(msg, fromRemote){
   saveState();
   updateSpark();
   renderChat();
-  if(fromRemote) sendReadReceipts();
+  if(fromRemote){
+    sendReadReceipts();
+    if(!isMine){
+      showMessagePopup(msg);
+      showSystemNotification((msg.name || "对方") + " 发来消息", msg.text || "新消息");
+      playSound("send");
+    }
+  }
 }
 function sendReadReceipts(){
   if(!goEasy || !goEasyConnected) return;
@@ -2940,19 +3030,48 @@ async function loadChatAvatar(who){
   chatAvatarCache[who] = rec && rec.value ? URL.createObjectURL(rec.value) : "";
   return chatAvatarCache[who];
 }
+function chatDayLabel(ts){
+  const d = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const key = function(x){ return x.getFullYear() + "-" + (x.getMonth() + 1) + "-" + x.getDate(); };
+  const k = key(d);
+  if(k === key(today)) return "今天";
+  if(k === key(yesterday)) return "昨天";
+  return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+}
+function updateTypingDisplay(){
+  const el = document.getElementById("chatTyping");
+  if(!el) return;
+  el.textContent = partnerTyping ? "对方正在输入…" : "";
+}
 async function renderChat(){
   const box = document.getElementById("chatMessages");
   renderChatStatuses();
   await loadChatAvatar("boy");
   await loadChatAvatar("girl");
+  updateTypingDisplay();
   box.innerHTML = "";
   if(!state.chat.length){
-    box.innerHTML = '<div class="muted" style="text-align:center;padding:20px;">还没有消息，说第一句话吧。</div>';
+    box.innerHTML = '<div class="muted" style="text-align:center;padding:24px;">还没有消息，说第一句话吧。</div>';
     return;
   }
+  let lastDay = "";
+  let prev = null;
   state.chat.forEach(function(m){
+    const day = chatDayLabel(m.time);
+    if(day !== lastDay){
+      const dayDiv = document.createElement("div");
+      dayDiv.className = "chat-day";
+      dayDiv.innerHTML = "<span>" + esc(day) + "</span>";
+      box.appendChild(dayDiv);
+      lastDay = day;
+      prev = null;
+    }
     const wrap = document.createElement("div");
-    wrap.className = "msg-wrap " + (m.mine ? "mine" : "theirs");
+    const grouped = prev && prev.mine === m.mine && (m.time - prev.time) < 5 * 60 * 1000 && chatDayLabel(m.time) === chatDayLabel(prev.time);
+    wrap.className = "msg-wrap " + (m.mine ? "mine" : "theirs") + (grouped ? " grouped" : "");
     const avatar = document.createElement("span");
     avatar.className = "msg-avatar";
     avatar.textContent = String(m.name || "?").slice(0,1);
@@ -2968,6 +3087,7 @@ async function renderChat(){
     wrap.appendChild(avatar);
     wrap.appendChild(d);
     box.appendChild(wrap);
+    prev = m;
   });
   box.scrollTop = box.scrollHeight;
 }
@@ -2975,6 +3095,10 @@ document.getElementById("chatSend").onclick = sendChat;
 document.getElementById("chatReconnectBtn").onclick = function(){ reconnectGoEasy(false); };
 document.getElementById("chatInput").addEventListener("keydown", function(e){
   if(e.key === "Enter") sendChat();
+});
+document.getElementById("chatInput").addEventListener("input", function(){
+  clearTimeout(typingPublishTimer);
+  typingPublishTimer = setTimeout(publishTyping, 300);
 });
 window.addEventListener("beforeunload", function(){ publishPresence("offline"); });
 function sendChat(){
@@ -3004,7 +3128,7 @@ document.querySelectorAll("#chatQuick [data-quick]").forEach(function(btn){
 });
 
 // ============ 定位与地图 ============
-function reportLocation(){
+function reportLocation(recenter){
   if(!navigator.geolocation){
     document.getElementById("mapStatus").textContent = "不支持定位";
     return;
@@ -3016,7 +3140,7 @@ function reportLocation(){
       lat: pos.coords.latitude, lng: pos.coords.longitude,
       accuracy: Math.round(pos.coords.accuracy), time: Date.now()
     };
-    applyMyLocation(data);
+    applyMyLocation(data, recenter !== false);
     if(goEasy && goEasyConnected){
       goEasy.pubsub.publish({ channel: locationChannel(), message: JSON.stringify(data), onFailed: function(){ toast("位置同步失败"); } });
     }
@@ -3024,7 +3148,7 @@ function reportLocation(){
     document.getElementById("mapStatus").textContent = "定位失败，请授权位置";
   }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
 }
-function applyMyLocation(data){
+function applyMyLocation(data, recenter){
   state.myLocation = data;
   state[data.who + "Location"] = data;
   if(data.who === "boy"){
@@ -3033,7 +3157,7 @@ function applyMyLocation(data){
     document.getElementById("locGirl").textContent = fmtLocation(data);
   }
   document.getElementById("mapStatus").textContent = "位置已更新";
-  drawMapMarkers();
+  drawMapMarkers(recenter === false);
   updateWeather();
 }
 function applyPartnerLocation(data){
@@ -3044,7 +3168,7 @@ function applyPartnerLocation(data){
   }else{
     document.getElementById("locGirl").textContent = fmtLocation(data);
   }
-  if(currentScreen === "map") drawMapMarkers();
+  if(currentScreen === "map") drawMapMarkers(false);
   updateWeather();
 }
 function fmtLocation(data){
@@ -3053,19 +3177,41 @@ function fmtLocation(data){
 }
 document.getElementById("locRefresh").onclick = function(){ reportLocation(); };
 document.getElementById("locNotify").onclick = function(){ reportLocation(); };
+document.getElementById("locOpenMap").onclick = function(){
+  const me = state.profile.who === "boy" ? state.boyLocation : state.girlLocation;
+  if(!me){
+    toast("请先刷新我的位置");
+    return;
+  }
+  const url = "https://uri.amap.com/marker?position=" + me.lng + "," + me.lat + "&name=" + encodeURIComponent(myName() + "的位置");
+  window.open(url, "_blank");
+};
 
 function initMap(){
   if(map) return;
   if(!window.TMap){
-    document.getElementById("mapStatus").textContent = "地图加载中…";
-    setTimeout(function(){ initMap(); }, 800);
+    mapRetry += 1;
+    if(mapRetry <= 15){
+      document.getElementById("mapStatus").textContent = "地图加载中…";
+      setTimeout(function(){ initMap(); }, 800);
+    }else{
+      document.getElementById("mapStatus").textContent = "地图加载失败，请部署到 HTTPS 并检查腾讯地图域名白名单";
+    }
     return;
   }
+  mapRetry = 0;
   try{
     map = new TMap.Map(document.getElementById("map"), {
       center: new TMap.LatLng(30.57, 104.06),
-      zoom: 12
+      zoom: 12,
+      viewMode: "2D"
     });
+    try{
+      if(TMap.control && TMap.control.Zoom) map.addControl(new TMap.control.Zoom());
+      if(TMap.control && TMap.control.Scale) map.addControl(new TMap.control.Scale());
+    }catch(e){}
+    map.on("dragstart", function(){ mapGestureLock = true; });
+    map.on("dragend", function(){ setTimeout(function(){ mapGestureLock = false; }, 2500); });
     const styles = {
       boy: new TMap.MarkerStyle({
         width: 36, height: 46, anchor: { x: 18, y: 44 },
@@ -3077,16 +3223,16 @@ function initMap(){
       })
     };
     markerLayer = new TMap.MultiMarker({ map: map, styles: styles, geometries: [] });
-    drawMapMarkers();
+    drawMapMarkers(false);
   }catch(e){
-    document.getElementById("mapStatus").textContent = "地图初始化失败";
+    document.getElementById("mapStatus").textContent = "地图加载失败，请检查腾讯地图 Key 域名白名单";
   }
 }
 function markerSvg(name, color){
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="46"><path d="M18 1C9 1 2 8 2 17c0 13 16 28 16 28s16-15 16-28C34 8 27 1 18 1z" fill="' + color + '"/><text x="18" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">' + esc(name) + '</text></svg>';
   return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
-function drawMapMarkers(){
+function drawMapMarkers(keepView){
   if(!map || !markerLayer) return;
   const geometries = [];
   const points = [];
@@ -3101,14 +3247,25 @@ function drawMapMarkers(){
     points.push(other);
   }
   markerLayer.setGeometries(geometries);
+  if(keepView || mapGestureLock) return;
   if(points.length){
+    if(points.length > 1 && TMap.LatLngBounds){
+      try{
+        const lats = points.map(function(p){ return p.lat; });
+        const lngs = points.map(function(p){ return p.lng; });
+        const sw = new TMap.LatLng(Math.min.apply(null, lats), Math.min.apply(null, lngs));
+        const ne = new TMap.LatLng(Math.max.apply(null, lats), Math.max.apply(null, lngs));
+        map.fitBounds(new TMap.LatLngBounds(sw, ne), { padding: 60 });
+        return;
+      }catch(e){}
+    }
     const lat = points.reduce(function(s,p){ return s + p.lat; }, 0) / points.length;
     const lng = points.reduce(function(s,p){ return s + p.lng; }, 0) / points.length;
     map.setCenter(new TMap.LatLng(lat, lng));
-    map.setZoom(points.length > 1 ? 12 : 14);
+    map.setZoom(points.length > 1 ? 13 : 15);
   }
 }
-setInterval(function(){ if(currentScreen === "map") reportLocation(); }, 30000);
+setInterval(function(){ if(currentScreen === "map") reportLocation(false); }, 30000);
 
 // ============ 双人天气 ============
 let weatherTimer = null;
@@ -4704,6 +4861,35 @@ function showNotification(title, body){
     toast(body);
   }
 }
+let msgPopupTimer = null;
+function hideMsgPopup(){
+  const pop = document.getElementById("msgPopup");
+  if(pop) pop.classList.remove("show");
+}
+function showMessagePopup(msg){
+  const pop = document.getElementById("msgPopup");
+  if(!pop) return;
+  document.getElementById("msgPopupTitle").textContent = (msg.name || "对方") + " 发来消息";
+  document.getElementById("msgPopupText").textContent = msg.text || "";
+  const t = new Date(msg.time || Date.now());
+  document.getElementById("msgPopupTime").textContent = pad(t.getHours()) + ":" + pad(t.getMinutes());
+  pop.classList.add("show");
+  clearTimeout(msgPopupTimer);
+  msgPopupTimer = setTimeout(hideMsgPopup, 6000);
+}
+function showSystemNotification(title, body){
+  try{
+    if("Notification" in window && Notification.permission === "granted"){
+      new Notification(title, { body: body, icon: "./icons/icon-192.png" });
+    }
+  }catch(e){}
+}
+document.getElementById("msgPopupClose").onclick = hideMsgPopup;
+document.getElementById("msgPopupClose2").onclick = hideMsgPopup;
+document.getElementById("msgPopupOpen").onclick = function(){
+  hideMsgPopup();
+  showScreen("chat");
+};
 function checkReminders(){
   const r = state.reminders;
   const now = Date.now();
