@@ -1,4 +1,4 @@
-const CACHE_NAME = "couple-space-v2";
+const CACHE_NAME = "couple-space-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,6 +25,58 @@ self.addEventListener("activate", function(event){
           .map(function(key){ return caches.delete(key); })
       );
     }).then(function(){ return self.clients.claim(); })
+  );
+});
+
+self.addEventListener("push", function(event){
+  let title = "小禹和小颖的专属空间";
+  let body = "有新消息";
+  let tag = "chat";
+  let url = "./index.html#chat";
+  try{
+    const data = event.data ? event.data.json() : null;
+    if(data){
+      title = data.title || title;
+      body = data.body || body;
+      tag = data.tag || tag;
+      url = data.url || url;
+    }
+  }catch(e){}
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clients){
+      const visible = clients.some(function(client){
+        return client.visibilityState === "visible";
+      });
+      if(visible) return;
+      return self.registration.showNotification(title, {
+        body: body,
+        icon: "./icons/icon-192.png",
+        badge: "./icons/icon-192.png",
+        tag: tag,
+        data: { url: url },
+        vibrate: [120, 60, 120]
+      });
+    })
+  );
+});
+
+self.addEventListener("notificationclick", function(event){
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "./index.html#chat";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function(clients){
+      for(const client of clients){
+        if("focus" in client){
+          client.focus();
+          try{
+            if(client.url.indexOf("#chat") === -1 && "navigate" in client) client.navigate(url);
+          }catch(e){}
+          try{ client.postMessage({ type: "open-chat" }); }catch(e){}
+          return;
+        }
+      }
+      return self.clients.openWindow(url);
+    })
   );
 });
 

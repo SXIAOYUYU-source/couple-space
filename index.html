@@ -215,6 +215,32 @@ input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);}
 .history-item .date{font-weight:800;color:var(--deep);}
 .history-item .days{font-size:12px;color:var(--muted);margin-left:auto;}
 .history-item button{color:#c45555;font-size:18px;background:transparent;padding:2px 6px;min-width:36px;min-height:36px;}
+
+/* 小颖记账 */
+.salary-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.salary-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px 8px;text-align:center;box-shadow:0 4px 12px rgba(116,60,82,.06);}
+.salary-card small{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+.salary-card b{display:block;font-size:19px;color:var(--deep);font-weight:900;white-space:nowrap;}
+.salary-leave{font-size:13px;line-height:1.6;color:#8a5a22;background:#fff9e8;border:1px solid #f1dfae;border-radius:var(--radius);padding:9px 12px;}
+.salary-leave b{color:#c17a1f;}
+.salary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;}
+.salary-grid .field{margin-bottom:8px;}
+.salary-month-nav{margin-left:auto;display:flex;align-items:center;gap:4px;color:var(--deep);font-weight:800;font-size:13px;}
+.salary-month-nav .icon-btn{width:36px;height:36px;font-size:16px;line-height:1;}
+.salary-list,.salary-year-list{display:flex;flex-direction:column;gap:8px;}
+.salary-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:9px 10px;}
+.salary-row .date{font-weight:800;color:var(--deep);font-size:13px;min-width:80px;flex:0 0 auto;}
+.salary-row .info{flex:1;min-width:0;font-size:12px;color:var(--muted);line-height:1.5;}
+.salary-row .total{font-size:15px;font-weight:900;color:var(--pink);white-space:nowrap;}
+.salary-row button{color:#c45555;font-size:18px;background:transparent;padding:2px 6px;min-width:36px;min-height:36px;}
+.salary-empty{text-align:center;color:var(--muted);font-size:13px;padding:20px 8px;}
+.salary-year-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;}
+.salary-year-row b{font-size:14px;color:var(--deep);min-width:52px;}
+.salary-year-row span{flex:1;font-size:12px;color:var(--muted);}
+.salary-year-row em{font-style:normal;font-size:15px;font-weight:900;color:var(--gold);}
+@media (max-width:380px){.salary-summary{grid-template-columns:1fr 1fr;}.salary-card:first-child{grid-column:1 / -1;}}
+@media (max-width:400px){.salary-grid{grid-template-columns:1fr;}}
+
 .food-tabs{display:flex;gap:8px;margin-bottom:10px;}
 .food-tabs button{flex:1;padding:8px;border-radius:var(--radius);font-size:13px;font-weight:800;background:#f6edf1;color:var(--muted);min-height:40px;}
 .food-tabs button.active{background:var(--pink);color:#fff;}
@@ -403,11 +429,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .tab:hover .ico{transform:translateY(-3px) scale(1.12);}
 .tab.active .ico{animation:tabBounce .8s ease;}
 @keyframes tabBounce{0%,100%{transform:translateY(0);}35%{transform:translateY(-5px);}60%{transform:translateY(1px);}}
-.ai-smartbar{position:fixed;left:14px;right:14px;bottom:calc(58px + env(safe-area-inset-bottom) + 8px);transform:none;z-index:59;width:auto;max-width:652px;margin:0 auto;
-  display:flex;align-items:center;gap:10px;min-height:50px;padding:9px 12px;
-  background:rgba(255,255,255,.9);border:1px solid rgba(226,192,209,.85);border-radius:18px;
-  box-shadow:0 12px 34px rgba(83,48,65,.16);backdrop-filter:blur(18px);
-  opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .25s ease,transform .25s ease;}
+.ai-smartbar{display:none !important;}
 .ai-smartbar.show{opacity:1;pointer-events:auto;transform:translateY(0);}
 .ai-smartbar .ai-avatar{width:32px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(135deg,var(--pink),var(--gold));color:#fff;font-size:17px;flex:0 0 auto;
@@ -590,6 +612,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
 .saving-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
 .saving-head b{font-size:14px;color:var(--deep);}
 .saving-head .amount{font-size:12px;color:var(--muted);}
+.saving-creator{font-size:12px;color:var(--muted);margin:-4px 0 6px;}
+.saving-creator b{color:var(--deep);font-weight:800;}
 .saving-bar{height:10px;background:#f0e2e8;border-radius:99px;overflow:hidden;}
 .saving-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--pink));border-radius:99px;transition:width .3s ease;}
 .saving-periods{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);}
@@ -744,6 +768,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
         <button class="item" data-open="pet"><span class="ico">🐰</span><b>双人宠物</b><span>一起喂养一起长大</span></button>
         <button class="item" data-open="anniv"><span class="ico">🎈</span><b>纪念日档案</b><span>过去与未来都收藏</span></button>
         <button class="item" data-open="games"><span class="ico">🎮</span><b>双人游戏</b><span>默契与互动</span></button>
+        <button class="item" data-open="salary"><span class="ico">💰</span><b>小颖记账</b><span>每日工资自动算</span></button>
         <button class="item" data-open="more"><span class="ico">✦</span><b>更多</b><span>故事、情书与设置</span></button>
       </div>
     </section>
@@ -1057,6 +1082,82 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </section>
 
+    <!-- 小颖记账 -->
+    <section class="screen" id="sc-salary">
+      <div class="panel">
+        <div class="panel-title">💰 小颖记账</div>
+        <div class="salary-summary">
+          <div class="salary-card"><small>今日工资</small><b id="salaryToday">¥0</b></div>
+          <div class="salary-card"><small>本月工资</small><b id="salaryMonth">¥0</b></div>
+          <div class="salary-card"><small>今年工资</small><b id="salaryYear">¥0</b></div>
+        </div>
+        <div class="salary-leave" id="salaryLeaveInfo"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">⚙️ 工资设置</div>
+        <div class="salary-grid">
+          <div class="field" style="grid-column:1 / -1;"><label>底薪按客户数量</label></div>
+          <div class="field"><label>档位1 客户≥</label><input id="salaryTier1Min" type="number" min="0" step="1" /></div>
+          <div class="field"><label>档位1 底薪</label><input id="salaryTier1Base" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>档位2 客户≥</label><input id="salaryTier2Min" type="number" min="0" step="1" /></div>
+          <div class="field"><label>档位2 底薪</label><input id="salaryTier2Base" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>档位3 客户≥</label><input id="salaryTier3Min" type="number" min="0" step="1" /></div>
+          <div class="field"><label>档位3 底薪</label><input id="salaryTier3Base" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>档位4 客户≥</label><input id="salaryTier4Min" type="number" min="0" step="1" /></div>
+          <div class="field"><label>档位4 底薪</label><input id="salaryTier4Base" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>产品提成 %</label><input id="salaryProductRate" type="number" min="0" step="0.1" /></div>
+          <div class="field"><label>业绩提成 %</label><input id="salaryPerfRate" type="number" min="0" step="0.1" /></div>
+          <div class="field"><label>餐补 / 天</label><input id="salaryMeal" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>社保补助 / 月</label><input id="salarySocial" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>请假扣款方式</label>
+            <select id="salaryLeaveMode">
+              <option value="fixed">固定金额 / 天</option>
+              <option value="base">按底薪 ÷ 应出勤天数</option>
+            </select>
+          </div>
+          <div class="field"><label>月应出勤天数</label><input id="salaryWorkDays" type="number" min="1" step="0.5" /></div>
+          <div class="field"><label>固定扣款 / 天</label><input id="salaryLeaveDeduct" type="number" min="0" step="0.01" /></div>
+        </div>
+        <button class="btn block" id="salaryConfigSave">保存工资设置</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📅 记一天</div>
+        <div class="salary-grid">
+          <div class="field"><label>日期</label><input type="date" id="salaryDate" /></div>
+          <div class="field"><label>请假天数</label><input id="salaryLeave" type="number" min="0" step="0.5" /></div>
+          <div class="field"><label>客户数量</label><input id="salaryCustomers" type="number" min="0" step="1" /></div>
+          <div class="field"><label>手工提成</label><input id="salaryHandCommission" type="number" min="0" step="0.01" placeholder="不填按手工金额" /></div>
+          <div class="field"><label>手工金额</label><input id="salaryHand" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>产品销售额</label><input id="salaryProduct" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>业绩额</label><input id="salaryPerf" type="number" min="0" step="0.01" /></div>
+        </div>
+        <button class="btn block" id="salaryAddBtn">记入当天</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🗓 记账记录
+          <span class="salary-month-nav">
+            <button class="icon-btn" id="salaryPrevMonth" title="上个月">‹</button>
+            <span id="salaryMonthLabel">本月</span>
+            <button class="icon-btn" id="salaryNextMonth" title="下个月">›</button>
+          </span>
+        </div>
+        <div class="salary-list" id="salaryList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🧹 清零与重置</div>
+        <div class="row wrap">
+          <button class="btn ghost" id="salaryClearMonth">清零当前月</button>
+          <button class="btn ghost" id="salaryClearYear">清零今年</button>
+          <button class="btn ghost" id="salaryClearAll">清零全部</button>
+          <button class="btn ghost" id="salaryResetConfig">恢复默认设置</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📊 今年每月汇总</div>
+        <div class="salary-year-list" id="salaryYearList"></div>
+      </div>
+    </section>
+
     <!-- 存钱计划 -->
     <section class="screen" id="sc-savings">
       <div class="panel">
@@ -1155,6 +1256,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
         <button class="item" data-open="remind"><span class="ico">⏰</span><b>喝水吃饭</b><span>贴心提醒</span></button>
         <button class="item" data-open="notes"><span class="ico">📝</span><b>每日记事</b><span>想说的和想做的</span></button>
         <button class="item" data-open="savings"><span class="ico">💰</span><b>存钱计划</b><span>一起攒下未来</span></button>
+        <button class="item" data-open="salary"><span class="ico">🧾</span><b>小颖记账</b><span>每日工资自动算</span></button>
         <button class="item" data-open="settings"><span class="ico">🎨</span><b>主题与背景</b><span>自定义主界面</span></button>
       </div>
       <div class="quick-grid" style="margin-top:12px;">
@@ -1244,6 +1346,15 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
         <div class="field"><label>API Key</label><input id="aiApiKey" type="password" placeholder="sk-..." autocomplete="off" /></div>
         <div class="muted" style="margin-bottom:12px;">不填 API Key 时会使用本地智能模式，也能回答纪念日、天气、生理期和宠物状态等问题。Key 只保存在本机。</div>
         <button class="btn block" id="aiSettingsSave">保存 AI 设置</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🔔 离线消息推送</div>
+        <div class="field"><label>推送服务器地址</label><input id="pushServerInput" inputmode="url" placeholder="https://你的用户名.workers.dev" autocomplete="off" /></div>
+        <div class="row">
+          <button class="btn" id="pushSaveBtn">保存并开启</button>
+          <button class="btn ghost" id="pushTestBtn">测试推送</button>
+        </div>
+        <div class="muted" id="pushStatus"></div>
       </div>
       <div class="panel">
         <div class="panel-title">💾 数据</div>
@@ -1359,6 +1470,7 @@ const GOEASY_APPKEY = "BC-9f9424a2f944455da986064a56708751";
 const GOEASY_HOST = "hangzhou.goeasy.io";
 const DEFAULT_COUPLE_CODE = "050629";
 const TENCENT_MAP_KEY = "RTKBZ-GSUL3-P6K33-RMLKR-T5OB6-ZQFHY";
+const VAPID_PUBLIC_KEY = "BJDcQivlelNDUkOujikcH0schuI0rC6hYQNXNcWImLSqOOY6kATwDU3h7vHm02jVrUSbW5tGMaTMek9t-XDhGWw";
 const STORE_KEY = "couple_space_sy_yy_v3";
 const LEGACY_KEY = "love_site_sy_yy_v2";
 const DB_NAME = "couple_space_db";
@@ -1404,7 +1516,27 @@ const DEFAULT_STATE = {
   notes: [],
   songs: [],
   savings: [],
+  salary: {
+    config: {
+      tiers: [
+        { min: 0, base: 2500 },
+        { min: 21, base: 3000 },
+        { min: 41, base: 3500 },
+        { min: 61, base: 4000 }
+      ],
+      productRate: 15,
+      perfRate: 10,
+      meal: 15,
+      social: 500,
+      leaveMode: "fixed",
+      workDays: 26,
+      leaveDeduct: 100,
+      updatedAt: 0
+    },
+    records: []
+  },
   spark: { lastChatDate: "", streak: 0, longest: 0 },
+  push: { server: "", enabled: false },
   migratedLegacy: false,
   syncMeta: {}
 };
@@ -1489,6 +1621,9 @@ function loadState(){
   st.notes = Array.isArray(saved.notes) ? saved.notes : [];
   st.songs = Array.isArray(saved.songs) ? saved.songs : [];
   st.savings = Array.isArray(saved.savings) ? saved.savings : [];
+  st.salary = Object.assign({}, DEFAULT_STATE.salary, saved.salary || {});
+  st.salary.config = Object.assign({}, DEFAULT_STATE.salary.config, (saved.salary && saved.salary.config) || {});
+  st.salary.records = Array.isArray(saved.salary && saved.salary.records) ? saved.salary.records : [];
   st.spark = Object.assign({}, DEFAULT_STATE.spark, saved.spark || {});
   st.syncMeta = saved.syncMeta && typeof saved.syncMeta === "object" ? saved.syncMeta : {};
   return st;
@@ -1633,6 +1768,7 @@ function showScreen(name){
   if(name === "notes") renderNotes();
   if(name === "music") renderSongs();
   if(name === "savings") renderSavings();
+  if(name === "salary") renderSalary();
   if(name === "map") initMap();
   if(name === "weather"){
     renderWeather();
@@ -1935,7 +2071,11 @@ document.getElementById("welcomeEnter").onclick = function(){
   document.getElementById("welcome").style.display = "none";
   playSound("section");
   if("Notification" in window && Notification.permission === "default"){
-    Notification.requestPermission().catch(function(){});
+    Notification.requestPermission().then(function(){
+      setTimeout(setupOfflinePush, 600);
+    }).catch(function(){});
+  }else{
+    setTimeout(setupOfflinePush, 600);
   }
   renderHome();
   initGoEasy();
@@ -2335,7 +2475,7 @@ function initGoEasy(){
         presenceTimer = setInterval(function(){ publishPresence("online"); }, 30000);
         reportLocation();
         setTimeout(function(){ publishChatHistory(); publishHistoryRequest(); }, 800);
-        setTimeout(function(){ publishStateSync(true); publishMediaInventory(); }, 1200);
+        setTimeout(function(){ publishStateSync(true); publishMediaInventory(); publishSettingsInventory(); }, 1200);
       },
       onFailed: function(err){
         goEasyConnecting = false;
@@ -2617,6 +2757,10 @@ function buildSyncState(){
     anniversaries: Array.isArray(s.anniversaries) ? s.anniversaries : [],
     notes: Array.isArray(s.notes) ? s.notes : [],
     savings: Array.isArray(s.savings) ? s.savings : [],
+    salary: {
+      config: Object.assign({}, (s.salary && s.salary.config) || {}),
+      records: Array.isArray(s.salary && s.salary.records) ? s.salary.records : []
+    },
     songs: Array.isArray(s.songs) ? s.songs : [],
     period: Object.assign({}, s.period || {}),
     reminders: Object.assign({}, s.reminders || {}),
@@ -2653,6 +2797,7 @@ function syncStateCore(payload){
     anniversaries: payload.anniversaries,
     notes: payload.notes,
     savings: payload.savings,
+    salary: payload.salary,
     songs: payload.songs,
     period: payload.period,
     reminders: payload.reminders,
@@ -2697,6 +2842,7 @@ function handleSyncMessage(message){
     if(data.type === "media-delete") handleRemoteMediaDelete(data);
     if(data.type === "media-update") handleRemoteMediaUpdate(data);
     if(data.type === "setting-delete") handleRemoteSettingDelete(data);
+    if(data.type === "settings-request") handleSettingsRequest(data);
   }catch(e){}
 }
 function receiveSyncChunk(data){
@@ -2728,6 +2874,7 @@ function receiveSyncChunk(data){
     if(data.kind === "media-add") applyRemoteMediaAdd(payload);
     if(data.kind === "media-inventory") handleMediaInventoryPayload(payload);
     if(data.kind === "setting-blob") applyRemoteSettingBlob(payload);
+    if(data.kind === "settings-inventory") handleSettingsInventoryPayload(payload);
   }catch(e){}
 }
 function mergeListById(local, remote, deleted){
@@ -2795,7 +2942,7 @@ function applyRemoteState(payload){
   meta.deleted = meta.deleted || {};
 
   const remoteDeleted = payload.deleted || {};
-  ["notes","savings","songs","period","media"].forEach(function(sec){
+  ["notes","savings","songs","period","media","salary"].forEach(function(sec){
     const secDel = remoteDeleted[sec];
     if(!secDel || typeof secDel !== "object") return;
     meta.deleted[sec] = meta.deleted[sec] || {};
@@ -2829,6 +2976,24 @@ function applyRemoteState(payload){
     const merged = mergeSavings(state.savings, payload.savings, meta.deleted.savings);
     if(JSON.stringify(state.savings) !== JSON.stringify(merged)){ state.savings = merged; changed = true; }
   }
+  if(payload.salary){
+    const localSalary = state.salary || { config: {}, records: [] };
+    let config = Object.assign({}, localSalary.config);
+    if(payload.salary.config && Object.keys(payload.salary.config).length){
+      const localConfigTime = Number(localSalary.config && localSalary.config.updatedAt) || 0;
+      const remoteConfigTime = Number(payload.salary.config.updatedAt) || 0;
+      if(remoteConfigTime > localConfigTime){
+        config = Object.assign({}, config, payload.salary.config);
+        meta.sections.salaryConfig = remoteTime;
+      }
+    }
+    const mergedRecords = mergeListById(localSalary.records, payload.salary.records || [], meta.deleted.salary);
+    const mergedSalary = { config: config, records: mergedRecords };
+    if(JSON.stringify(state.salary) !== JSON.stringify(mergedSalary)){
+      state.salary = mergedSalary;
+      changed = true;
+    }
+  }
   if(payload.period){
     const mergedPeriod = mergePeriod(state.period, payload.period, meta.deleted.period);
     if(JSON.stringify(state.period) !== JSON.stringify(mergedPeriod)){
@@ -2858,6 +3023,7 @@ async function rerenderAllSync(){
   renderChat();
   renderNotes();
   renderSavings();
+  renderSalary();
   renderSongs();
   renderPeriod();
   renderAnniv();
@@ -3006,6 +3172,53 @@ async function handleRemoteMediaUpdate(data){
     renderMedia();
   }
 }
+async function publishSettingsInventory(){
+  if(!goEasy || !goEasyConnected) return;
+  const keys = ["customBg", "coupleHeroBg", "coupleBoyAvatar", "coupleGirlAvatar"];
+  (state.songs || []).forEach(function(s){
+    if(s.fileKey && keys.indexOf(s.fileKey) === -1) keys.push(s.fileKey);
+  });
+  const items = [];
+  for(const key of keys){
+    const rec = await getSetting(key).catch(function(){ return null; });
+    if(rec && rec.value && rec.value.size) items.push({ key: key, size: rec.value.size });
+  }
+  publishChunkedSync("settings-inventory", {
+    uid: myUid(),
+    name: myName(),
+    time: Date.now(),
+    items: items
+  });
+}
+async function handleSettingsInventoryPayload(payload){
+  if(!payload || payload.uid === myUid()) return;
+  const remote = {};
+  (payload.items || []).forEach(function(item){
+    if(item && item.key) remote[item.key] = item.size || 0;
+  });
+  const need = [];
+  for(const key of Object.keys(remote)){
+    const rec = await getSetting(key).catch(function(){ return null; });
+    if(!rec || !rec.value || !rec.value.size || rec.value.size !== remote[key]) need.push(key);
+  }
+  for(let i = 0; i < need.length; i += 50){
+    publishDirectSync({
+      type: "settings-request",
+      uid: myUid(),
+      name: myName(),
+      time: Date.now(),
+      keys: need.slice(i, i + 50)
+    });
+  }
+}
+async function handleSettingsRequest(data){
+  if(!data || !Array.isArray(data.keys) || !data.keys.length) return;
+  if(data.uid && data.uid === myUid()) return;
+  for(const key of data.keys){
+    const rec = await getSetting(key).catch(function(){ return null; });
+    if(rec && rec.value) await syncSettingBlob(key, rec.value);
+  }
+}
 async function syncSettingBlob(key, blob){
   if(!goEasy || !goEasyConnected) return;
   if(!blob) return;
@@ -3027,6 +3240,10 @@ async function applyRemoteSettingBlob(payload){
   try{
     const blob = await (await fetch(payload.blobBase64)).blob();
     await saveSetting(payload.key, blob);
+    if(payload.key === "coupleBoyAvatar" || payload.key === "coupleGirlAvatar"){
+      chatAvatarCache = { boy: null, girl: null };
+      renderChat();
+    }
     renderSettings();
     applyBackground();
     applyCoupleVisuals();
@@ -3039,6 +3256,10 @@ function publishSettingDelete(key){
 async function handleRemoteSettingDelete(data){
   if(!data || !data.key || data.uid === myUid()) return;
   await saveSetting(data.key, null);
+  if(data.key === "coupleBoyAvatar" || data.key === "coupleGirlAvatar"){
+    chatAvatarCache = { boy: null, girl: null };
+    renderChat();
+  }
   renderSettings();
   applyBackground();
   applyCoupleVisuals();
@@ -3139,6 +3360,7 @@ function sendChat(){
     toast("实时连接未建立，消息只保存在本机");
   }
   appendChat(msg, false);
+  requestOfflineNotify(myName() + " 发来消息", text);
   if(currentScreen === "chat") updateSmartAssistant("chat");
 }
 document.querySelectorAll("#chatQuick [data-quick]").forEach(function(btn){
@@ -4151,6 +4373,384 @@ document.getElementById("videoHangupBtn").onclick = function(){ endVideoCall(tru
 document.getElementById("videoAcceptBtn").onclick = acceptVideoCall;
 document.getElementById("videoDeclineBtn").onclick = declineVideoCall;
 
+// ============ 小颖记账 ============
+let salaryViewYear = new Date().getFullYear();
+let salaryViewMonth = new Date().getMonth() + 1;
+const DEFAULT_SALARY_TIERS = [
+  { min: 0, base: 2500 },
+  { min: 21, base: 3000 },
+  { min: 41, base: 3500 },
+  { min: 61, base: 4000 }
+];
+function salaryTiers(c){
+  const list = Array.isArray(c && c.tiers) && c.tiers.length ? c.tiers : DEFAULT_SALARY_TIERS;
+  return list.map(function(t){
+    return { min: Math.max(0, Math.floor(Number(t && t.min) || 0)), base: Math.max(0, Number(t && t.base) || 0) };
+  }).sort(function(a,b){ return a.min - b.min; });
+}
+function salaryConfig(){
+  const c = (state.salary && state.salary.config) || {};
+  const tiers = salaryTiers(c);
+  return {
+    tiers: tiers,
+    base: tiers.length ? tiers[0].base : 0,
+    productRate: c.productRate == null ? 15 : Number(c.productRate),
+    perfRate: c.perfRate == null ? 10 : Number(c.perfRate),
+    meal: Number(c.meal) || 0,
+    social: Number(c.social) || 0,
+    leaveMode: c.leaveMode === "base" ? "base" : "fixed",
+    workDays: Number(c.workDays) > 0 ? Number(c.workDays) : 26,
+    leaveDeduct: Number(c.leaveDeduct) || 0
+  };
+}
+function salaryMoney(n){
+  return "¥" + (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
+}
+function salaryLeaveDeductPerDay(cfg, base){
+  if(cfg.leaveMode === "base"){
+    const b = base != null ? base : cfg.base;
+    return Math.max(0, b / Math.max(1, cfg.workDays));
+  }
+  return Math.max(0, cfg.leaveDeduct);
+}
+function salaryHandCommission(record){
+  if(record.handCommission != null && Number(record.handCommission) >= 0){
+    return Number(record.handCommission);
+  }
+  return Number(record.hand || 0);
+}
+function salaryBaseForMonth(year, month){
+  const cfg = salaryConfig();
+  const prefix = year + "-" + String(month).padStart(2, "0");
+  const customers = (state.salary && state.salary.records || []).reduce(function(sum, r){
+    if(String(r.date || "").indexOf(prefix) === 0){
+      return sum + Math.max(0, Math.floor(Number(r.customers) || 0));
+    }
+    return sum;
+  }, 0);
+  let base = cfg.base;
+  cfg.tiers.forEach(function(t){
+    if(customers >= t.min) base = t.base;
+  });
+  return base;
+}
+function salaryBaseForDate(date){
+  const m = String(date || "").slice(0, 7);
+  if(m && m.indexOf("-") === 4){
+    const parts = m.split("-");
+    return salaryBaseForMonth(Number(parts[0]), Number(parts[1]));
+  }
+  return salaryConfig().base;
+}
+function salaryDaily(record){
+  const cfg = salaryConfig();
+  const base = salaryBaseForDate(record && record.date);
+  const hand = salaryHandCommission(record);
+  const product = Number(record.product || 0) * cfg.productRate / 100;
+  const perf = Number(record.perf || 0) * cfg.perfRate / 100;
+  const leave = Math.max(0, Number(record.leave || 0));
+  const meal = cfg.meal * Math.max(0, Math.min(1, 1 - leave));
+  const deduct = leave * salaryLeaveDeductPerDay(cfg, base);
+  return Math.max(0, hand + product + perf + meal - deduct);
+}
+function salaryMonthRecords(year, month){
+  const prefix = year + "-" + String(month).padStart(2, "0");
+  return (state.salary && state.salary.records || []).filter(function(r){
+    return String(r.date || "").indexOf(prefix) === 0;
+  });
+}
+function salaryMonthSummary(year, month){
+  const recs = salaryMonthRecords(year, month);
+  const cfg = salaryConfig();
+  const base = salaryBaseForMonth(year, month);
+  const daily = recs.reduce(function(s, r){ return s + salaryDaily(r); }, 0);
+  const leave = recs.reduce(function(s, r){ return s + Math.max(0, Number(r.leave || 0)); }, 0);
+  const deduct = leave * salaryLeaveDeductPerDay(cfg, base);
+  const customers = recs.reduce(function(s, r){ return s + Math.max(0, Math.floor(Number(r.customers) || 0)); }, 0);
+  return {
+    count: recs.length,
+    daily: daily,
+    leave: leave,
+    deduct: deduct,
+    base: base,
+    customers: customers,
+    total: base + cfg.social + daily
+  };
+}
+function salaryYearTotal(year){
+  const months = {};
+  (state.salary && state.salary.records || []).forEach(function(r){
+    const m = String(r.date || "").slice(0, 7);
+    if(m && m.indexOf(String(year)) === 0) months[m] = true;
+  });
+  let total = 0;
+  Object.keys(months).forEach(function(m){
+    const parts = m.split("-");
+    total += salaryMonthSummary(Number(parts[0]), Number(parts[1])).total;
+  });
+  return total;
+}
+function updateSalaryLeaveFields(){
+  const mode = document.getElementById("salaryLeaveMode").value;
+  const fixedField = document.getElementById("salaryLeaveDeduct").closest(".field");
+  const workField = document.getElementById("salaryWorkDays").closest(".field");
+  if(mode === "base"){
+    fixedField.style.display = "none";
+    workField.style.display = "";
+  }else{
+    fixedField.style.display = "";
+    workField.style.display = "none";
+  }
+}
+function renderSalary(){
+  const cfg = salaryConfig();
+  cfg.tiers.forEach(function(tier, i){
+    const minEl = document.getElementById("salaryTier" + (i + 1) + "Min");
+    const baseEl = document.getElementById("salaryTier" + (i + 1) + "Base");
+    if(minEl) minEl.value = tier.min;
+    if(baseEl) baseEl.value = tier.base;
+  });
+  document.getElementById("salaryProductRate").value = cfg.productRate;
+  document.getElementById("salaryPerfRate").value = cfg.perfRate;
+  document.getElementById("salaryMeal").value = cfg.meal;
+  document.getElementById("salarySocial").value = cfg.social;
+  document.getElementById("salaryLeaveDeduct").value = cfg.leaveDeduct;
+  document.getElementById("salaryLeaveMode").value = cfg.leaveMode;
+  document.getElementById("salaryWorkDays").value = cfg.workDays;
+  updateSalaryLeaveFields();
+  const dateInput = document.getElementById("salaryDate");
+  if(dateInput && !dateInput.value) dateInput.value = fmtDate(new Date());
+
+  const now = new Date();
+  const today = fmtDate(now);
+  const todayTotal = (state.salary && state.salary.records || []).filter(function(r){
+    return r.date === today;
+  }).reduce(function(s, r){ return s + salaryDaily(r); }, 0);
+  document.getElementById("salaryToday").textContent = salaryMoney(todayTotal);
+
+  const month = salaryMonthSummary(now.getFullYear(), now.getMonth() + 1);
+  document.getElementById("salaryMonth").textContent = salaryMoney(month.total);
+  document.getElementById("salaryYear").textContent = salaryMoney(salaryYearTotal(now.getFullYear()));
+  const leavePerDay = salaryLeaveDeductPerDay(cfg, month.base);
+  const leaveSource = cfg.leaveMode === "base"
+    ? "每天扣 底薪(" + salaryMoney(month.base) + ")÷" + cfg.workDays + "天 = " + salaryMoney(leavePerDay)
+    : "每天固定扣 " + salaryMoney(leavePerDay);
+  const baseInfo = "本月客户 " + month.customers + " 位 · 底薪 " + salaryMoney(month.base) + " · ";
+  document.getElementById("salaryLeaveInfo").textContent = month.leave > 0
+    ? baseInfo + "请假 " + month.leave + " 天 · " + leaveSource + " · 本月扣除 " + salaryMoney(month.deduct) + " · 合计 " + salaryMoney(month.total)
+    : baseInfo + "全勤 · " + leaveSource + " · 合计 " + salaryMoney(month.total);
+
+  document.getElementById("salaryMonthLabel").textContent = salaryViewYear + "年" + salaryViewMonth + "月";
+  const list = document.getElementById("salaryList");
+  const recs = salaryMonthRecords(salaryViewYear, salaryViewMonth).slice().sort(function(a,b){
+    return String(b.date).localeCompare(String(a.date));
+  });
+  if(!recs.length){
+    list.innerHTML = '<div class="salary-empty">这个月还没有记账</div>';
+  }else{
+    list.innerHTML = "";
+    recs.forEach(function(r){
+      const info = [];
+      if(Number(r.customers || 0) > 0) info.push("客户 " + r.customers + " 位");
+      if(Number(r.hand || 0) > 0) info.push("手工金额 " + salaryMoney(r.hand));
+      if(Number(r.handCommission || 0) > 0 || Number(r.hand || 0) > 0) info.push("手工提成 " + salaryMoney(salaryHandCommission(r)));
+      if(Number(r.product || 0) > 0) info.push("产品 " + salaryMoney(r.product));
+      if(Number(r.perf || 0) > 0) info.push("业绩 " + salaryMoney(r.perf));
+      if(Number(r.leave || 0) > 0) info.push("请假 " + r.leave + " 天");
+      const row = document.createElement("div");
+      row.className = "salary-row";
+      row.innerHTML = "<span class='date'>" + esc(r.date) + "</span><div class='info'>" +
+        esc(info.join(" · ") || "休息") + "<div>" + esc(r.name || "") + "</div></div>" +
+        "<span class='total'>" + salaryMoney(salaryDaily(r)) + "</span>" +
+        "<button data-del='" + esc(r.id) + "' title='删除'>×</button>";
+      list.appendChild(row);
+    });
+  }
+
+  const year = now.getFullYear();
+  const yearList = document.getElementById("salaryYearList");
+  const monthRows = [];
+  for(let m = 1; m <= 12; m++){
+    const summary = salaryMonthSummary(year, m);
+    if(summary.count > 0){
+      monthRows.push({ m: m, summary: summary });
+    }
+  }
+  if(!monthRows.length){
+    yearList.innerHTML = '<div class="salary-empty">今年还没有记账记录</div>';
+  }else{
+    yearList.innerHTML = "";
+    monthRows.forEach(function(row){
+      const item = document.createElement("div");
+      item.className = "salary-year-row";
+      item.innerHTML = "<b>" + row.m + "月</b><span>" + row.summary.count + " 条记录 · 客户 " + row.summary.customers + " 位 · 底薪 " + salaryMoney(row.summary.base) + "</span><em>" + salaryMoney(row.summary.total) + "</em>";
+      yearList.appendChild(item);
+    });
+  }
+}
+document.getElementById("salaryConfigSave").onclick = function(){
+  const cfg = salaryConfig();
+  cfg.tiers = [1, 2, 3, 4].map(function(i){
+    return {
+      min: Math.max(0, Math.floor(Number(document.getElementById("salaryTier" + i + "Min").value) || 0)),
+      base: Math.max(0, Number(document.getElementById("salaryTier" + i + "Base").value) || 0)
+    };
+  }).sort(function(a,b){ return a.min - b.min; });
+  cfg.base = cfg.tiers.length ? cfg.tiers[0].base : 0;
+  cfg.productRate = Math.max(0, Number(document.getElementById("salaryProductRate").value) || 0);
+  cfg.perfRate = Math.max(0, Number(document.getElementById("salaryPerfRate").value) || 0);
+  cfg.meal = Math.max(0, Number(document.getElementById("salaryMeal").value) || 0);
+  cfg.social = Math.max(0, Number(document.getElementById("salarySocial").value) || 0);
+  cfg.leaveMode = document.getElementById("salaryLeaveMode").value === "base" ? "base" : "fixed";
+  cfg.workDays = Math.max(1, Number(document.getElementById("salaryWorkDays").value) || 26);
+  cfg.leaveDeduct = Math.max(0, Number(document.getElementById("salaryLeaveDeduct").value) || 0);
+  cfg.updatedAt = Date.now();
+  state.salary.config = cfg;
+  saveState();
+  scheduleStateSync(true);
+  renderSalary();
+  toast("工资设置已保存");
+};
+document.getElementById("salaryAddBtn").onclick = function(){
+  const date = document.getElementById("salaryDate").value;
+  if(!date){
+    toast("请选择日期");
+    return;
+  }
+  const hand = Number(document.getElementById("salaryHand").value) || 0;
+  const product = Number(document.getElementById("salaryProduct").value) || 0;
+  const perf = Number(document.getElementById("salaryPerf").value) || 0;
+  const leave = Math.max(0, Number(document.getElementById("salaryLeave").value) || 0);
+  const customers = Math.max(0, Math.floor(Number(document.getElementById("salaryCustomers").value) || 0));
+  const commissionValue = document.getElementById("salaryHandCommission").value;
+  const handCommission = commissionValue === "" ? null : Math.max(0, Number(commissionValue) || 0);
+  if(hand <= 0 && product <= 0 && perf <= 0 && leave <= 0 && customers <= 0 && !(handCommission > 0)){
+    toast("请填写金额或请假天数");
+    return;
+  }
+  state.salary.records.push({
+    id: "sal" + Date.now() + Math.random().toString(16).slice(2, 7),
+    date: date,
+    hand: hand,
+    customers: customers,
+    handCommission: handCommission,
+    product: product,
+    perf: perf,
+    leave: leave,
+    name: myName(),
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+  saveState();
+  scheduleStateSync(true);
+  renderSalary();
+  document.getElementById("salaryHand").value = "";
+  document.getElementById("salaryCustomers").value = "";
+  document.getElementById("salaryHandCommission").value = "";
+  document.getElementById("salaryProduct").value = "";
+  document.getElementById("salaryPerf").value = "";
+  document.getElementById("salaryLeave").value = "";
+  toast("已记入 " + date);
+};
+document.getElementById("salaryPrevMonth").onclick = function(){
+  salaryViewMonth--;
+  if(salaryViewMonth < 1){
+    salaryViewMonth = 12;
+    salaryViewYear--;
+  }
+  renderSalary();
+};
+document.getElementById("salaryNextMonth").onclick = function(){
+  salaryViewMonth++;
+  if(salaryViewMonth > 12){
+    salaryViewMonth = 1;
+    salaryViewYear++;
+  }
+  renderSalary();
+};
+document.getElementById("salaryLeaveMode").addEventListener("change", updateSalaryLeaveFields);
+document.getElementById("salaryList").addEventListener("click", function(e){
+  const btn = e.target.closest("button[data-del]");
+  if(!btn) return;
+  const id = btn.getAttribute("data-del");
+  if(!confirm("删除这条记账？")) return;
+  state.salary.records = state.salary.records.filter(function(r){ return r.id !== id; });
+  tombstone("salary", id);
+  saveState();
+  scheduleStateSync(true);
+  renderSalary();
+  toast("已删除");
+});
+function clearSalaryRecords(ids, label){
+  if(!ids || !ids.length){
+    toast("没有可清零的记录");
+    return;
+  }
+  ids.forEach(function(id){
+    tombstone("salary", id);
+  });
+  const del = {};
+  ids.forEach(function(id){ del[id] = true; });
+  state.salary.records = state.salary.records.filter(function(r){ return !del[r.id]; });
+  saveState();
+  scheduleStateSync(true);
+  renderSalary();
+  toast(label + "已清零");
+}
+document.getElementById("salaryClearMonth").onclick = function(){
+  const ids = salaryMonthRecords(salaryViewYear, salaryViewMonth).map(function(r){ return r.id; });
+  if(!ids.length){
+    toast("当前月没有记录");
+    return;
+  }
+  if(!confirm("确定清零 " + salaryViewYear + "年" + salaryViewMonth + "月 的 " + ids.length + " 条记账？")) return;
+  clearSalaryRecords(ids, "当前月工资");
+};
+document.getElementById("salaryClearYear").onclick = function(){
+  const year = new Date().getFullYear();
+  const ids = (state.salary && state.salary.records || []).filter(function(r){
+    return String(r.date || "").indexOf(String(year)) === 0;
+  }).map(function(r){ return r.id; });
+  if(!ids.length){
+    toast("今年没有记录");
+    return;
+  }
+  if(!confirm("确定清零今年 " + ids.length + " 条记账？")) return;
+  clearSalaryRecords(ids, "今年工资");
+};
+document.getElementById("salaryClearAll").onclick = function(){
+  const ids = (state.salary && state.salary.records || []).map(function(r){ return r.id; });
+  if(!ids.length){
+    toast("没有记录");
+    return;
+  }
+  if(!confirm("确定清零全部 " + ids.length + " 条记账？")) return;
+  clearSalaryRecords(ids, "全部工资");
+};
+document.getElementById("salaryResetConfig").onclick = function(){
+  if(!confirm("恢复默认工资设置？")) return;
+  state.salary.config = {
+    tiers: [
+      { min: 0, base: 2500 },
+      { min: 21, base: 3000 },
+      { min: 41, base: 3500 },
+      { min: 61, base: 4000 }
+    ],
+    productRate: 15,
+    perfRate: 10,
+    meal: 15,
+    social: 500,
+    leaveMode: "fixed",
+    workDays: 26,
+    leaveDeduct: 100,
+    updatedAt: Date.now()
+  };
+  saveState();
+  scheduleStateSync(true);
+  renderSalary();
+  toast("已恢复默认设置");
+};
+
 // ============ 每日记事 ============
 function noteKindLabel(kind){
   if(kind === "said") return "想说的";
@@ -4183,7 +4783,7 @@ function renderNotes(){
   items.forEach(function(n){
     const row = document.createElement("div");
     row.className = "note-item";
-    row.innerHTML = '<div class="note-main"><div class="note-date">' + esc(n.date) + '</div><p>' + esc(n.text) + '</p></div><span class="note-badge ' + esc(n.kind || "said") + '">' + noteKindLabel(n.kind) + '</span><button class="note-del" data-note-del="' + esc(n.id) + '">✕</button>';
+    row.innerHTML = '<div class="note-main"><div class="note-date">' + esc(n.date) + ' · ' + esc(n.creator || "未标记") + '</div><p>' + esc(n.text) + '</p></div><span class="note-badge ' + esc(n.kind || "said") + '">' + noteKindLabel(n.kind) + '</span><button class="note-del" data-note-del="' + esc(n.id) + '">✕</button>';
     list.appendChild(row);
   });
   list.querySelectorAll("[data-note-del]").forEach(function(btn){
@@ -4212,6 +4812,7 @@ document.getElementById("noteAddBtn").onclick = function(){
     date: date,
     text: text,
     kind: kind,
+    creator: myName(),
     createdAt: Date.now()
   });
   saveState(); renderNotes();
@@ -4250,10 +4851,10 @@ function renderSavings(){
     const month = today.slice(0,7);
     const todaySum = records.filter(function(r){ return r.date === today; }).reduce(function(s,r){ return s + Number(r.amount || 0); }, 0);
     const monthSum = records.filter(function(r){ return (r.date || "").slice(0,7) === month; }).reduce(function(s,r){ return s + Number(r.amount || 0); }, 0);
-    const recent = records.slice(-3).reverse().map(function(r){ return '<span>' + esc(r.date) + ' +' + Number(r.amount || 0).toFixed(0) + '</span>'; }).join("");
+    const recent = records.slice(-3).reverse().map(function(r){ return '<span>' + esc(r.date) + ' ' + esc(r.creator || "未标记") + ' +' + Number(r.amount || 0).toFixed(0) + '</span>'; }).join("");
     const row = document.createElement("div");
     row.className = "saving-item";
-    row.innerHTML = '<div class="saving-head"><b>' + esc(plan.name) + '</b><span class="amount">' + Number(plan.saved || 0).toFixed(0) + ' / ' + Number(plan.target || 0).toFixed(0) + '</span></div><div class="saving-bar"><i style="width:' + pct + '%"></i></div><div class="saving-periods"><span>今日 +' + todaySum.toFixed(0) + ' 元</span><span>本月 +' + monthSum.toFixed(0) + ' 元</span></div>' + (recent ? '<div class="saving-records">' + recent + '</div>' : '') + '<div class="saving-actions"><button class="btn teal" data-save-deposit="' + esc(plan.id) + '">存入</button><button class="btn ghost" data-save-del="' + esc(plan.id) + '">删除</button></div>';
+    row.innerHTML = '<div class="saving-head"><b>' + esc(plan.name) + '</b><span class="amount">' + Number(plan.saved || 0).toFixed(0) + ' / ' + Number(plan.target || 0).toFixed(0) + '</span></div><div class="saving-creator">由 <b>' + esc(plan.creator || "未标记") + '</b> 创建</div><div class="saving-bar"><i style="width:' + pct + '%"></i></div><div class="saving-periods"><span>今日 +' + todaySum.toFixed(0) + ' 元</span><span>本月 +' + monthSum.toFixed(0) + ' 元</span></div>' + (recent ? '<div class="saving-records">' + recent + '</div>' : '') + '<div class="saving-actions"><button class="btn teal" data-save-deposit="' + esc(plan.id) + '">存入</button><button class="btn ghost" data-save-del="' + esc(plan.id) + '">删除</button></div>';
     list.appendChild(row);
   });
   list.querySelectorAll("[data-save-deposit]").forEach(function(btn){
@@ -4288,6 +4889,7 @@ document.getElementById("savingsAddBtn").onclick = function(){
     target: target,
     saved: 0,
     records: [],
+    creator: myName(),
     createdAt: Date.now()
   });
   saveState(); renderSavings();
@@ -4302,7 +4904,7 @@ document.getElementById("savingsDepositConfirm").onclick = function(){
   if(!n || n <= 0){ toast("请输入正确的金额"); return; }
   plan.saved = (plan.saved || 0) + n;
   if(!Array.isArray(plan.records)) plan.records = [];
-  plan.records.push({ date: fmtDate(new Date()), amount: n, createdAt: Date.now() });
+  plan.records.push({ date: fmtDate(new Date()), amount: n, creator: myName(), createdAt: Date.now() });
   saveState(); renderSavings();
   document.getElementById("savingsModal").classList.remove("show");
   toast("已存入 " + n.toFixed(0) + " 元");
@@ -4905,6 +5507,96 @@ function showSystemNotification(title, body){
     }
   }catch(e){}
 }
+function normalizePushServer(url){
+  url = String(url || "").trim().replace(/\/+$/, "");
+  if(!/^https:\/\//i.test(url)) return "";
+  return url;
+}
+function getPushServer(){
+  return normalizePushServer(state.push && state.push.server);
+}
+function pushApi(path){
+  const server = getPushServer();
+  return server ? server + path : "";
+}
+function pushFetch(path, data){
+  const url = pushApi(path);
+  if(!url) return Promise.reject(new Error("未配置推送服务器"));
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data || {})
+  }).then(function(res){ return res.json().catch(function(){ return {}; }); });
+}
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+function updatePushStatus(text){
+  const el = document.getElementById("pushStatus");
+  if(el) el.textContent = text || "";
+}
+async function setupOfflinePush(){
+  const server = getPushServer();
+  if(!server || !state.push || !state.push.enabled){
+    updatePushStatus(state.push && state.push.server ? "已关闭" : "");
+    return;
+  }
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)){
+      updatePushStatus("当前浏览器不支持");
+      return;
+    }
+    if(Notification.permission === "denied"){
+      updatePushStatus("通知权限被拒绝");
+      return;
+    }
+    if(Notification.permission === "default"){
+      const p = await Notification.requestPermission();
+      if(p !== "granted"){
+        updatePushStatus("等待通知权限");
+        return;
+      }
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const result = await pushFetch("/api/push/register", {
+      coupleCode: state.coupleCode || DEFAULT_COUPLE_CODE,
+      who: state.profile.who,
+      name: myName(),
+      subscription: sub.toJSON()
+    });
+    if(result && result.ok){
+      updatePushStatus("离线推送已开启");
+    }else{
+      updatePushStatus("服务器地址无效");
+    }
+  }catch(err){
+    updatePushStatus("开启失败，请检查地址");
+  }
+}
+function requestOfflineNotify(title, body){
+  const server = getPushServer();
+  if(!server || !state.push || !state.push.enabled) return;
+  const toWho = state.profile.who === "boy" ? "girl" : "boy";
+  pushFetch("/api/push/notify", {
+    coupleCode: state.coupleCode || DEFAULT_COUPLE_CODE,
+    toWho: toWho,
+    title: title,
+    body: body,
+    tag: "chat-" + Date.now()
+  }).catch(function(){});
+}
 document.getElementById("msgPopupClose").onclick = hideMsgPopup;
 document.getElementById("msgPopupClose2").onclick = hideMsgPopup;
 document.getElementById("msgPopupOpen").onclick = function(){
@@ -5052,6 +5744,69 @@ document.getElementById("resetData").onclick = function(){
   location.reload();
 };
 document.getElementById("requestPersist").onclick = requestPersistStorage;
+document.getElementById("pushSaveBtn").onclick = async function(){
+  const url = normalizePushServer(document.getElementById("pushServerInput").value);
+  if(!url){
+    state.push.server = "";
+    state.push.enabled = false;
+    saveState(); renderSettings();
+    updatePushStatus("已关闭");
+    toast("离线推送已关闭");
+    return;
+  }
+  state.push.server = url;
+  state.push.enabled = true;
+  saveState();
+  updatePushStatus("正在开启…");
+  await setupOfflinePush();
+  toast("离线推送已保存");
+};
+document.getElementById("pushTestBtn").onclick = async function(){
+  if(!getPushServer()){
+    document.getElementById("pushSaveBtn").click();
+  }
+  try{
+    if("Notification" in window && Notification.permission !== "granted"){
+      const p = await Notification.requestPermission();
+      if(p !== "granted"){
+        toast("需要允许通知权限");
+        return;
+      }
+    }
+    if(!("serviceWorker" in navigator)){
+      toast("浏览器不支持");
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    await pushFetch("/api/push/register", {
+      coupleCode: state.coupleCode || DEFAULT_COUPLE_CODE,
+      who: state.profile.who,
+      name: myName(),
+      subscription: sub.toJSON()
+    });
+    const result = await pushFetch("/api/push/test", {
+      coupleCode: state.coupleCode || DEFAULT_COUPLE_CODE,
+      who: state.profile.who,
+      subscription: sub.toJSON()
+    });
+    if(result && result.ok){
+      toast("测试消息已发送");
+      updatePushStatus("离线推送已开启");
+    }else{
+      toast("推送失败，请检查服务器地址");
+      updatePushStatus("服务器地址无效");
+    }
+  }catch(err){
+    toast("测试失败");
+  }
+};
 
 function renderSettings(){
   renderAccountBadge();
@@ -5066,6 +5821,8 @@ function renderSettings(){
   document.getElementById("boyNameInput").value = state.profile.boyName || "邵禹";
   document.getElementById("girlNameInput").value = state.profile.girlName || "杨颖";
   document.getElementById("coupleCodeInput").value = state.coupleCode || DEFAULT_COUPLE_CODE;
+  document.getElementById("pushServerInput").value = (state.push && state.push.server) || "";
+  updatePushStatus(state.push && state.push.enabled ? (state.push.server ? "离线推送已开启" : "已关闭") : (state.push && state.push.server ? "已关闭" : ""));
   applyBackground();
   renderAiSettings();
 }
@@ -5299,7 +6056,14 @@ async function init(){
   updateStorageInfo();
   updateSmartAssistant("home");
   if("serviceWorker" in navigator && location.protocol.indexOf("http") === 0){
-    navigator.serviceWorker.register("./sw.js").catch(function(){});
+    navigator.serviceWorker.register("./sw.js").then(function(){
+      if(!("Notification" in window) || Notification.permission === "granted"){
+        setTimeout(setupOfflinePush, 800);
+      }
+    }).catch(function(){});
+    navigator.serviceWorker.addEventListener("message", function(event){
+      if(event.data && event.data.type === "open-chat") showScreen("chat");
+    });
   }
   document.getElementById("musicPlayer").src = CONFIG.music;
   document.getElementById("musicPlayer").load();
