@@ -750,6 +750,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
             <span class="device-status" id="deviceStatus">对方状态未同步</span>
             <span class="spark-status" id="sparkStatus">🔥 0 天</span>
           </div>
+          <button class="icon-btn chat-video-btn" id="chatReconnectBtn" title="重新连接">🔄</button>
           <button class="icon-btn chat-video-btn" id="videoCallBtn" title="视频通话">📹</button>
           <span class="status" id="chatStatus">连接中…</span>
         </div>
@@ -1327,7 +1328,8 @@ const DEFAULT_STATE = {
   songs: [],
   savings: [],
   spark: { lastChatDate: "", streak: 0, longest: 0 },
-  migratedLegacy: false
+  migratedLegacy: false,
+  syncMeta: {}
 };
 
 // ============ 状态与存储 ============
@@ -1339,9 +1341,19 @@ function chatChannel(){ return coupleChannel("chat"); }
 function locationChannel(){ return coupleChannel("location"); }
 function petChannel(){ return coupleChannel("pet"); }
 function videoChannel(){ return coupleChannel("video"); }
+function syncChannel(){ return coupleChannel("sync"); }
 let dbPromise = null;
 let goEasy = null;
 let goEasyConnected = false;
+let goEasyConnecting = false;
+let presenceTimer = null;
+let reconnectTimer = null;
+let syncTransferMap = {};
+let applyingRemoteSync = false;
+let stateSyncTimer = null;
+let lastStateSyncHash = "";
+const SYNC_CHUNK_SIZE = 3600;
+const MAX_MEDIA_SYNC_BYTES = 5 * 1024 * 1024;
 let partnerPresence = { online: false, lastSeen: 0 };
 let ownBattery = { level: null, charging: false };
 let map = null;
@@ -1385,19 +1397,25 @@ function loadState(){
   st.ai.history = Array.isArray(saved.ai && saved.ai.history) ? saved.ai.history : [];
   st.reminders = Object.assign({}, DEFAULT_STATE.reminders, saved.reminders || {});
   st.reminders.mealNotified = saved.reminders && saved.reminders.mealNotified ? saved.reminders.mealNotified : {};
-  st.anniversaries = (Array.isArray(saved.anniversaries) ? saved.anniversaries : CONFIG.anniversaries.slice()).map(normalizeAnniversary);
+  st.anniversaries = (Array.isArray(saved.anniversaries) ? saved.anniversaries : CONFIG.anniversaries.slice()).map(function(a){
+    a = normalizeAnniversary(a);
+    if(!a.id) a.id = "ann_" + encodeURIComponent(a.name || "x") + "_" + (a.date || "") + "_" + (a.calendar || "solar");
+    return a;
+  });
   st.archive = Array.isArray(saved.archive) ? saved.archive : [];
   st.chat = Array.isArray(saved.chat) ? saved.chat : [];
   st.notes = Array.isArray(saved.notes) ? saved.notes : [];
   st.songs = Array.isArray(saved.songs) ? saved.songs : [];
   st.savings = Array.isArray(saved.savings) ? saved.savings : [];
   st.spark = Object.assign({}, DEFAULT_STATE.spark, saved.spark || {});
+  st.syncMeta = saved.syncMeta && typeof saved.syncMeta === "object" ? saved.syncMeta : {};
   return st;
 }
 
 function saveState(){
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    if(!applyingRemoteSync) scheduleStateSync();
     return true;
   } catch(e){
     toast("本地存储已满，可清理部分聊天记录或旧数据。");
@@ -1880,6 +1898,16 @@ async function deleteMediaRecord(id){
   const tx = db.transaction("media", "readwrite");
   return idbRequest(tx.objectStore("media").delete(id));
 }
+async function migrateMediaIds(){
+  let items = [];
+  try{ items = await getAllMedia(); }catch(e){}
+  for(const item of items){
+    if(typeof item.id === "string" && item.id.indexOf("m") === 0) continue;
+    const newId = "m" + Date.now() + Math.random().toString(16).slice(2,7);
+    await addMediaRecord(Object.assign({}, item, { id: newId }));
+    await deleteMediaRecord(item.id);
+  }
+}
 async function saveSetting(key, value){
   const db = await openDB();
   const tx = db.transaction("settings", "readwrite");
@@ -1926,13 +1954,16 @@ document.getElementById("mediaFile").onchange = async function(e){
   if(!files.length) return;
   for(const file of files){
     const blob = await compressImage(file);
-    await addMediaRecord({
+    const record = {
+      id: "m" + Date.now() + Math.random().toString(16).slice(2,7),
       type: file.type.startsWith("video/") ? "video" : "image",
       blob: blob,
       name: file.name,
       caption: "",
       createdAt: Date.now()
-    });
+    };
+    record.id = await addMediaRecord(record);
+    syncMediaRecord(record);
   }
   e.target.value = "";
   toast("已添加 " + files.length + " 个文件");
@@ -2003,6 +2034,7 @@ document.getElementById("mediaCaptionSave").onclick = async function(){
   if(item){
     item.caption = document.getElementById("mediaCaption").value.trim();
     await updateMediaRecord(item);
+    publishMediaUpdate(item.id, item.caption);
     toast("描述已保存");
   }
 };
@@ -2010,6 +2042,7 @@ document.getElementById("mediaDelete").onclick = async function(){
   if(currentMediaId == null) return;
   if(!confirm("删除这个照片 / 视频？")) return;
   await deleteMediaRecord(currentMediaId);
+  publishMediaDelete(currentMediaId);
   document.getElementById("mediaModal").classList.remove("show");
   currentMediaId = null;
   renderMedia();
@@ -2179,6 +2212,7 @@ document.getElementById("annivAddBtn").onclick = function(){
     item.lunarDay = base.getDate();
     item.isLeap = false;
   }
+  item.id = "ann_" + encodeURIComponent(item.name) + "_" + item.date + "_" + item.calendar;
   state.anniversaries.push(normalizeAnniversary(item));
   saveState();
   renderAnniv();
@@ -2199,26 +2233,62 @@ function initGoEasy(){
       appkey: GOEASY_APPKEY,
       modules: ["pubsub"]
     });
+    goEasyConnecting = true;
+    scheduleAutoReconnect();
     goEasy.connect({
       onSuccess: function(){
+        goEasyConnecting = false;
         goEasyConnected = true;
         setChatStatus("实时连接", true);
         goEasy.pubsub.subscribe({ channel: chatChannel(), onMessage: handleGoEasyMessage });
         goEasy.pubsub.subscribe({ channel: locationChannel(), onMessage: handleGoEasyMessage });
         goEasy.pubsub.subscribe({ channel: petChannel(), onMessage: handleGoEasyMessage });
         goEasy.pubsub.subscribe({ channel: videoChannel(), onMessage: handleVideoSignal });
+        goEasy.pubsub.subscribe({ channel: syncChannel(), onMessage: handleSyncMessage });
         publishPresence("online");
-        setInterval(function(){ publishPresence("online"); }, 30000);
+        if(presenceTimer) clearInterval(presenceTimer);
+        presenceTimer = setInterval(function(){ publishPresence("online"); }, 30000);
         reportLocation();
+        setTimeout(function(){ publishChatHistory(); publishHistoryRequest(); }, 800);
+        setTimeout(function(){ publishStateSync(true); publishMediaInventory(); }, 1200);
       },
       onFailed: function(err){
+        goEasyConnecting = false;
         goEasyConnected = false;
         setChatStatus("连接失败", false);
+        scheduleAutoReconnect();
+      },
+      onDisconnected: function(err){
+        goEasyConnecting = false;
+        goEasyConnected = false;
+        setChatStatus("已断开，等待重连", false);
+        scheduleAutoReconnect();
       }
     });
   }catch(e){
+    goEasyConnecting = false;
     setChatStatus("连接异常", false);
+    scheduleAutoReconnect();
   }
+}
+function scheduleAutoReconnect(){
+  if(reconnectTimer) return;
+  reconnectTimer = setInterval(function(){
+    if(goEasyConnected){
+      clearInterval(reconnectTimer);
+      reconnectTimer = null;
+      return;
+    }
+    if(!goEasyConnecting && navigator.onLine !== false) reconnectGoEasy(true);
+  }, 10000);
+}
+function reconnectGoEasy(silent){
+  if(!silent) toast("正在重新连接…");
+  setChatStatus("连接中…", false);
+  goEasyConnecting = true;
+  try{ if(goEasy && goEasy.disconnect) goEasy.disconnect(); }catch(e){}
+  goEasyConnected = false;
+  setTimeout(initGoEasy, 500);
 }
 function setChatStatus(text, ok){
   const el = document.getElementById("chatStatus");
@@ -2292,14 +2362,20 @@ function initBatteryStatus(){
       battery.addEventListener("chargingchange", sync);
     }).catch(function(){});
   }
-  window.addEventListener("online", function(){ publishPresence("online"); });
-  window.addEventListener("offline", function(){ publishPresence("online"); });
+  window.addEventListener("online", function(){
+    publishPresence("online");
+    if(!goEasyConnected) reconnectGoEasy(true);
+  });
+  window.addEventListener("offline", function(){ publishPresence("offline"); });
 }
 function myName(){
   if(state.auth && state.auth.current && state.auth.current.name){
     return state.auth.current.name;
   }
   return state.profile.who === "boy" ? (state.profile.boyName || "邵禹") : (state.profile.girlName || "杨颖");
+}
+function myUid(){
+  return (state.auth && state.auth.current && state.auth.current.id) || "local-" + (state.profile.who || "boy");
 }
 function handleGoEasyMessage(message){
   try{
@@ -2309,6 +2385,8 @@ function handleGoEasyMessage(message){
     if(data.type === "pet") applyPetSync(data);
     if(data.type === "presence") updatePartnerStatus(data);
     if(data.type === "read") handleReadReceipt(data);
+    if(data.type === "history") mergeChatHistory(data);
+    if(data.type === "history_request") respondHistoryRequest(data);
   }catch(e){}
 }
 function appendChat(msg, fromRemote){
@@ -2352,6 +2430,509 @@ function handleReadReceipt(data){
     renderChat();
   }
 }
+function chatHistoryItems(){
+  return state.chat.slice(-300).map(function(m){
+    return { id: m.id, name: m.name, text: m.text, time: m.time, read: !!m.read, readByMe: !!m.readByMe };
+  });
+}
+function publishChatHistory(){
+  if(!goEasy || !goEasyConnected) return;
+  const items = chatHistoryItems();
+  const batchSize = 50;
+  for(let i = 0; i < items.length; i += batchSize){
+    const batch = items.slice(i, i + batchSize);
+    goEasy.pubsub.publish({
+      channel: chatChannel(),
+      message: JSON.stringify({ type: "history", name: myName(), uid: myUid(), who: state.profile.who, time: Date.now(), items: batch }),
+      onFailed: function(){}
+    });
+  }
+}
+function publishHistoryRequest(){
+  if(!goEasy || !goEasyConnected) return;
+  goEasy.pubsub.publish({
+    channel: chatChannel(),
+    message: JSON.stringify({ type: "history_request", name: myName(), uid: myUid(), who: state.profile.who, time: Date.now() }),
+    onFailed: function(){}
+  });
+}
+function respondHistoryRequest(data){
+  if(!goEasy || !goEasyConnected) return;
+  if(!data || data.name === myName() || (data.uid && data.uid === myUid())) return;
+  setTimeout(publishChatHistory, 200);
+}
+function mergeChatHistory(data){
+  if(!data || !Array.isArray(data.items) || !data.items.length) return;
+  if(data.name === myName() || (data.uid && data.uid === myUid())) return;
+  const existing = {};
+  state.chat.forEach(function(m){ existing[m.id] = true; });
+  let changed = false;
+  data.items.forEach(function(raw){
+    if(!raw || !raw.id || !raw.text) return;
+    if(existing[raw.id]) return;
+    state.chat.push({
+      id: raw.id,
+      name: raw.name || "对方",
+      text: raw.text,
+      time: raw.time || Date.now(),
+      mine: raw.name === myName(),
+      read: !!raw.read,
+      readByMe: !!raw.readByMe
+    });
+    existing[raw.id] = true;
+    changed = true;
+  });
+  if(!changed) return;
+  state.chat.sort(function(a,b){ return (a.time || 0) - (b.time || 0); });
+  if(state.chat.length > 300) state.chat = state.chat.slice(-300);
+  saveState();
+  renderChat();
+  sendReadReceipts();
+}
+// ============ 双端数据同步 ============
+function tombstone(section, id){
+  state.syncMeta = state.syncMeta || {};
+  state.syncMeta.deleted = state.syncMeta.deleted || {};
+  state.syncMeta.deleted[section] = state.syncMeta.deleted[section] || {};
+  state.syncMeta.deleted[section][id] = Date.now();
+}
+function buildSyncState(){
+  const s = state;
+  const meta = s.syncMeta || {};
+  return {
+    uid: myUid(),
+    name: myName(),
+    names: { boyName: s.profile.boyName || "邵禹", girlName: s.profile.girlName || "杨颖" },
+    anniversaries: Array.isArray(s.anniversaries) ? s.anniversaries : [],
+    notes: Array.isArray(s.notes) ? s.notes : [],
+    savings: Array.isArray(s.savings) ? s.savings : [],
+    songs: Array.isArray(s.songs) ? s.songs : [],
+    period: Object.assign({}, s.period || {}),
+    reminders: Object.assign({}, s.reminders || {}),
+    background: Object.assign({}, s.background || {}),
+    couple: Object.assign({}, s.couple || {}),
+    ai: {
+      mode: s.ai.mode || "local",
+      baseUrl: s.ai.baseUrl || "",
+      model: s.ai.model || "gpt-4o-mini",
+      history: Array.isArray(s.ai.history) ? s.ai.history.slice() : []
+    },
+    spark: Object.assign({}, s.spark || {}),
+    deleted: meta.deleted || {}
+  };
+}
+function scheduleStateSync(force){
+  clearTimeout(stateSyncTimer);
+  stateSyncTimer = setTimeout(function(){
+    publishStateSync(force);
+  }, 500);
+}
+function publishStateSync(force){
+  if(!goEasy || !goEasyConnected) return;
+  const payload = buildSyncState();
+  const hash = JSON.stringify(payload);
+  if(!force && hash === lastStateSyncHash) return;
+  lastStateSyncHash = hash;
+  payload.time = Date.now();
+  publishChunkedSync("state", payload);
+}
+function syncStateCore(payload){
+  return JSON.stringify({
+    names: payload.names,
+    anniversaries: payload.anniversaries,
+    notes: payload.notes,
+    savings: payload.savings,
+    songs: payload.songs,
+    period: payload.period,
+    reminders: payload.reminders,
+    background: payload.background,
+    couple: payload.couple,
+    ai: payload.ai,
+    spark: payload.spark,
+    deleted: payload.deleted
+  });
+}
+async function publishChunkedSync(kind, payload){
+  if(!goEasy || !goEasyConnected) return;
+  const transferId = "t" + Date.now() + Math.random().toString(16).slice(2,7);
+  const json = JSON.stringify(payload);
+  const total = Math.max(1, Math.ceil(json.length / SYNC_CHUNK_SIZE));
+  for(let i = 0; i < total; i++){
+    goEasy.pubsub.publish({
+      channel: syncChannel(),
+      message: JSON.stringify({
+        type: "sync-chunk",
+        kind: kind,
+        transferId: transferId,
+        index: i,
+        total: total,
+        data: json.slice(i * SYNC_CHUNK_SIZE, (i + 1) * SYNC_CHUNK_SIZE),
+        uid: myUid(),
+        name: myName(),
+        time: Date.now()
+      }),
+      onFailed: function(){}
+    });
+    if(i < total - 1) await new Promise(function(resolve){ setTimeout(resolve, 30); });
+  }
+}
+function handleSyncMessage(message){
+  try{
+    const data = JSON.parse(message.content);
+    if(!data || !data.type) return;
+    if(data.type === "sync-chunk") receiveSyncChunk(data);
+    if(data.type === "media-inventory") handleMediaInventory(data);
+    if(data.type === "media-request") handleMediaRequest(data);
+    if(data.type === "media-delete") handleRemoteMediaDelete(data);
+    if(data.type === "media-update") handleRemoteMediaUpdate(data);
+    if(data.type === "setting-delete") handleRemoteSettingDelete(data);
+  }catch(e){}
+}
+function receiveSyncChunk(data){
+  if(!data || !data.transferId || data.index == null || data.total == null) return;
+  if(data.uid && data.uid === myUid()) return;
+  const now = Date.now();
+  if(Object.keys(syncTransferMap).length > 20){
+    Object.keys(syncTransferMap).forEach(function(key){
+      if(now - syncTransferMap[key].last > 120000) delete syncTransferMap[key];
+    });
+  }
+  let entry = syncTransferMap[data.transferId];
+  if(!entry){
+    entry = { parts: [], total: data.total, kind: data.kind, last: now };
+    syncTransferMap[data.transferId] = entry;
+  }
+  entry.parts[data.index] = data.data;
+  entry.last = now;
+  let complete = true;
+  for(let i = 0; i < entry.total; i++){
+    if(!entry.parts[i]){ complete = false; break; }
+  }
+  if(!complete) return;
+  const json = entry.parts.join("");
+  delete syncTransferMap[data.transferId];
+  try{
+    const payload = JSON.parse(json);
+    if(data.kind === "state") applyRemoteState(payload);
+    if(data.kind === "media-add") applyRemoteMediaAdd(payload);
+    if(data.kind === "media-inventory") handleMediaInventoryPayload(payload);
+    if(data.kind === "setting-blob") applyRemoteSettingBlob(payload);
+  }catch(e){}
+}
+function mergeListById(local, remote, deleted){
+  const map = {};
+  deleted = deleted || {};
+  local.concat(remote).forEach(function(item){
+    if(!item || !item.id) return;
+    if(deleted[item.id]) return;
+    const prev = map[item.id];
+    if(!prev || (item.updatedAt || item.createdAt || 0) >= (prev.updatedAt || prev.createdAt || 0)){
+      map[item.id] = item;
+    }
+  });
+  return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){ return String(a.id).localeCompare(String(b.id)); });
+}
+function sameList(a, b){
+  if(a.length !== b.length) return false;
+  const idsA = a.map(function(x){ return x && x.id; }).sort();
+  const idsB = b.map(function(x){ return x && x.id; }).sort();
+  return idsA.every(function(v, i){ return v === idsB[i]; });
+}
+function mergeSavings(local, remote, deleted){
+  const map = {};
+  deleted = deleted || {};
+  local.concat(remote).forEach(function(plan){
+    if(!plan || !plan.id) return;
+    if(deleted[plan.id]) return;
+    if(!map[plan.id]){
+      map[plan.id] = Object.assign({}, plan, { records: [], updatedAt: plan.updatedAt || plan.createdAt || 0 });
+    }
+    const holder = map[plan.id];
+    holder.updatedAt = Math.max(holder.updatedAt || 0, plan.updatedAt || plan.createdAt || 0);
+    const recs = {};
+    (holder.records || []).concat(plan.records || []).forEach(function(r){
+      if(!r) return;
+      const key = String(r.createdAt || (r.date + "_" + r.amount));
+      recs[key] = r;
+    });
+    holder.records = Object.keys(recs).map(function(k){ return recs[k]; }).sort(function(a,b){ return (a.createdAt || 0) - (b.createdAt || 0); });
+    holder.saved = holder.records.reduce(function(sum, r){ return sum + Number(r.amount || 0); }, 0);
+  });
+  return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){ return String(a.id).localeCompare(String(b.id)); });
+}
+function mergePeriod(localPeriod, remotePeriod, deleted){
+  const d = deleted || {};
+  const historyMap = {};
+  (localPeriod.history || []).concat(remotePeriod.history || []).forEach(function(date){
+    if(!date) return;
+    if(d[date]) return;
+    historyMap[date] = true;
+  });
+  return {
+    cycle: Number(remotePeriod.cycle != null ? remotePeriod.cycle : localPeriod.cycle) || 28,
+    periodDays: Number(remotePeriod.periodDays != null ? remotePeriod.periodDays : localPeriod.periodDays) || 5,
+    history: Object.keys(historyMap).sort()
+  };
+}
+function applyRemoteState(payload){
+  if(!payload || payload.uid === myUid()) return;
+  applyingRemoteSync = true;
+  let changed = false;
+  const remoteTime = Number(payload.time) || Date.now();
+  const meta = state.syncMeta || (state.syncMeta = {});
+  meta.sections = meta.sections || {};
+  meta.deleted = meta.deleted || {};
+
+  const remoteDeleted = payload.deleted || {};
+  ["notes","savings","songs","period","media"].forEach(function(sec){
+    const secDel = remoteDeleted[sec];
+    if(!secDel || typeof secDel !== "object") return;
+    meta.deleted[sec] = meta.deleted[sec] || {};
+    Object.keys(secDel).forEach(function(id){
+      if(!meta.deleted[sec][id] || secDel[id] > meta.deleted[sec][id]) meta.deleted[sec][id] = secDel[id];
+    });
+    changed = true;
+  });
+
+  if(payload.names){
+    const boy = payload.names.boyName;
+    const girl = payload.names.girlName;
+    if(boy && boy !== state.profile.boyName){ state.profile.boyName = boy; changed = true; }
+    if(girl && girl !== state.profile.girlName){ state.profile.girlName = girl; changed = true; }
+    meta.sections.names = Math.max(meta.sections.names || 0, remoteTime);
+  }
+
+  if(Array.isArray(payload.notes)){
+    const merged = mergeListById(state.notes, payload.notes, meta.deleted.notes);
+    if(JSON.stringify(state.notes) !== JSON.stringify(merged)){ state.notes = merged; changed = true; }
+  }
+  if(Array.isArray(payload.anniversaries)){
+    const merged = mergeListById(state.anniversaries, payload.anniversaries, meta.deleted.anniversaries);
+    if(JSON.stringify(state.anniversaries) !== JSON.stringify(merged)){ state.anniversaries = merged; changed = true; }
+  }
+  if(Array.isArray(payload.songs)){
+    const merged = mergeListById(state.songs, payload.songs, meta.deleted.songs);
+    if(JSON.stringify(state.songs) !== JSON.stringify(merged)){ state.songs = merged; changed = true; }
+  }
+  if(Array.isArray(payload.savings)){
+    const merged = mergeSavings(state.savings, payload.savings, meta.deleted.savings);
+    if(JSON.stringify(state.savings) !== JSON.stringify(merged)){ state.savings = merged; changed = true; }
+  }
+  if(payload.period){
+    const mergedPeriod = mergePeriod(state.period, payload.period, meta.deleted.period);
+    if(JSON.stringify(state.period) !== JSON.stringify(mergedPeriod)){
+      state.period = mergedPeriod;
+      changed = true;
+    }
+  }
+
+  ["reminders","background","couple","ai","spark"].forEach(function(key){
+    if(!payload[key]) return;
+    if((meta.sections[key] || 0) > remoteTime) return;
+    state[key] = Object.assign({}, state[key], payload[key]);
+    if(key === "ai") state.ai.apiKey = state.ai.apiKey || "";
+    meta.sections[key] = remoteTime;
+    changed = true;
+  });
+
+  applyingRemoteSync = false;
+  if(changed){
+    saveState();
+    rerenderAllSync();
+  }
+  if(syncStateCore(payload) !== syncStateCore(buildSyncState())) scheduleStateSync(true);
+}
+async function rerenderAllSync(){
+  renderHome();
+  renderChat();
+  renderNotes();
+  renderSavings();
+  renderSongs();
+  renderPeriod();
+  renderAnniv();
+  renderPet();
+  renderRemind();
+  renderSettings();
+  renderAiButler();
+  renderStory();
+  renderLetter();
+  await applyCoupleVisuals();
+  renderMedia();
+  updateSmartAssistant(currentScreen);
+}
+function publishDirectSync(obj){
+  if(!goEasy || !goEasyConnected) return;
+  goEasy.pubsub.publish({
+    channel: syncChannel(),
+    message: JSON.stringify(obj),
+    onFailed: function(){}
+  });
+}
+async function getMediaRecord(id){
+  const db = await openDB();
+  const tx = db.transaction("media", "readonly");
+  return idbRequest(tx.objectStore("media").get(id));
+}
+async function syncMediaRecord(record){
+  if(!goEasy || !goEasyConnected) return;
+  if(!record || !record.blob) return;
+  if(!record.blob.size || record.blob.size > MAX_MEDIA_SYNC_BYTES){
+    toast("这个文件超过 5MB，只保存在本机");
+    return;
+  }
+  toast("照片/视频正在同步到对方…");
+  const blobBase64 = await blobToBase64(record.blob);
+  publishChunkedSync("media-add", {
+    uid: myUid(),
+    name: myName(),
+    time: Date.now(),
+    media: {
+      id: record.id,
+      type: record.type,
+      name: record.name,
+      caption: record.caption || "",
+      createdAt: record.createdAt,
+      blobBase64: blobBase64
+    }
+  });
+}
+async function applyRemoteMediaAdd(payload){
+  if(!payload || !payload.media || payload.uid === myUid()) return;
+  const m = payload.media;
+  const existing = await getMediaRecord(m.id).catch(function(){ return null; });
+  if(existing) return;
+  try{
+    const blob = await (await fetch(m.blobBase64)).blob();
+    await addMediaRecord({
+      id: m.id,
+      type: m.type || "image",
+      blob: blob,
+      name: m.name || "同步文件",
+      caption: m.caption || "",
+      createdAt: m.createdAt || Date.now()
+    });
+    renderMedia();
+    toast("收到对方的新照片/视频");
+  }catch(e){}
+}
+async function publishMediaInventory(){
+  if(!goEasy || !goEasyConnected) return;
+  let items = [];
+  try{ items = await getAllMedia(); }catch(e){}
+  publishChunkedSync("media-inventory", {
+    uid: myUid(),
+    name: myName(),
+    time: Date.now(),
+    items: items.map(function(m){
+      return { id: m.id, type: m.type, name: m.name, caption: m.caption || "", createdAt: m.createdAt };
+    }),
+    deleted: (state.syncMeta && state.syncMeta.deleted && state.syncMeta.deleted.media) || {}
+  });
+}
+function handleMediaInventory(data){
+  if(!data || data.type !== "media-inventory") return;
+  if(data.uid && data.uid === myUid()) return;
+  handleMediaInventoryPayload(data);
+}
+async function handleMediaInventoryPayload(payload){
+  if(!payload || payload.uid === myUid()) return;
+  const meta = state.syncMeta || (state.syncMeta = {});
+  meta.deleted = meta.deleted || {};
+  meta.deleted.media = meta.deleted.media || {};
+  const remoteDeleted = payload.deleted || {};
+  Object.keys(remoteDeleted).forEach(function(id){
+    if(!meta.deleted.media[id] || remoteDeleted[id] > meta.deleted.media[id]) meta.deleted.media[id] = remoteDeleted[id];
+    deleteMediaRecord(id).catch(function(){});
+  });
+  saveState();
+  const local = [];
+  try{ Array.prototype.push.apply(local, await getAllMedia()); }catch(e){}
+  const localIds = {};
+  local.forEach(function(m){ localIds[m.id] = true; });
+  const need = (payload.items || []).filter(function(m){ return m && !localIds[m.id]; }).map(function(m){ return m.id; });
+  if(need.length){
+    for(let i = 0; i < need.length; i += 50){
+      publishDirectSync({
+        type: "media-request",
+        uid: myUid(),
+        name: myName(),
+        time: Date.now(),
+        ids: need.slice(i, i + 50)
+      });
+    }
+  }
+  renderMedia();
+}
+async function handleMediaRequest(data){
+  if(!data || !Array.isArray(data.ids) || !data.ids.length) return;
+  if(data.uid && data.uid === myUid()) return;
+  for(const id of data.ids){
+    const rec = await getMediaRecord(id).catch(function(){ return null; });
+    if(rec) await syncMediaRecord(rec);
+  }
+}
+async function publishMediaDelete(id){
+  tombstone("media", id);
+  saveState();
+  publishDirectSync({ type: "media-delete", uid: myUid(), name: myName(), time: Date.now(), id: id });
+}
+async function handleRemoteMediaDelete(data){
+  if(!data || data.uid === myUid()) return;
+  await deleteMediaRecord(data.id).catch(function(){});
+  tombstone("media", data.id);
+  saveState();
+  renderMedia();
+}
+async function publishMediaUpdate(id, caption){
+  publishDirectSync({ type: "media-update", uid: myUid(), name: myName(), time: Date.now(), id: id, caption: caption });
+}
+async function handleRemoteMediaUpdate(data){
+  if(!data || data.uid === myUid()) return;
+  const rec = await getMediaRecord(data.id).catch(function(){ return null; });
+  if(rec){
+    rec.caption = data.caption || "";
+    await updateMediaRecord(rec);
+    renderMedia();
+  }
+}
+async function syncSettingBlob(key, blob){
+  if(!goEasy || !goEasyConnected) return;
+  if(!blob) return;
+  if(!blob.size || blob.size > MAX_MEDIA_SYNC_BYTES){
+    toast("这个文件超过 5MB，只保存在本机");
+    return;
+  }
+  const blobBase64 = await blobToBase64(blob);
+  publishChunkedSync("setting-blob", {
+    uid: myUid(),
+    name: myName(),
+    time: Date.now(),
+    key: key,
+    blobBase64: blobBase64
+  });
+}
+async function applyRemoteSettingBlob(payload){
+  if(!payload || !payload.key || payload.uid === myUid()) return;
+  try{
+    const blob = await (await fetch(payload.blobBase64)).blob();
+    await saveSetting(payload.key, blob);
+    renderSettings();
+    applyBackground();
+    applyCoupleVisuals();
+    renderSongs();
+  }catch(e){}
+}
+function publishSettingDelete(key){
+  publishDirectSync({ type: "setting-delete", uid: myUid(), name: myName(), time: Date.now(), key: key });
+}
+async function handleRemoteSettingDelete(data){
+  if(!data || !data.key || data.uid === myUid()) return;
+  await saveSetting(data.key, null);
+  renderSettings();
+  applyBackground();
+  applyCoupleVisuals();
+  renderSongs();
+}
 async function loadChatAvatar(who){
   if(chatAvatarCache[who]) return chatAvatarCache[who];
   const key = who === "boy" ? "coupleBoyAvatar" : "coupleGirlAvatar";
@@ -2391,6 +2972,7 @@ async function renderChat(){
   box.scrollTop = box.scrollHeight;
 }
 document.getElementById("chatSend").onclick = sendChat;
+document.getElementById("chatReconnectBtn").onclick = function(){ reconnectGoEasy(false); };
 document.getElementById("chatInput").addEventListener("keydown", function(e){
   if(e.key === "Enter") sendChat();
 });
@@ -2758,6 +3340,7 @@ function renderPeriod(){
       const d = btn.getAttribute("data-del");
       if(!confirm("删除这条记录？")) return;
       state.period.history = state.period.history.filter(function(x){ return x !== d; });
+      tombstone("period", d);
       saveState(); renderPeriod();
     };
   });
@@ -3430,6 +4013,7 @@ function renderNotes(){
       const id = btn.getAttribute("data-note-del");
       if(!confirm("删除这条记事？")) return;
       state.notes = state.notes.filter(function(n){ return n.id !== id; });
+      tombstone("notes", id);
       saveState(); renderNotes();
     };
   });
@@ -3510,6 +4094,7 @@ function renderSavings(){
       const id = btn.getAttribute("data-save-del");
       if(!confirm("删除这个存钱计划？")) return;
       state.savings = state.savings.filter(function(p){ return p.id !== id; });
+      tombstone("savings", id);
       saveState(); renderSavings();
     };
   });
@@ -3580,6 +4165,7 @@ function renderSongs(){
       const id = btn.getAttribute("data-song-del");
       if(!confirm("删除这首歌曲？")) return;
       state.songs = state.songs.filter(function(s){ return s.id !== id; });
+      tombstone("songs", id);
       saveState(); renderSongs();
       if(currentSongId === id){
         document.getElementById("songPlayer").pause();
@@ -3625,6 +4211,7 @@ document.getElementById("songAddBtn").onclick = async function(){
   const song = { id: id, title: title, url: url, fileKey: songFilePending ? "song_file_" + id : "", createdAt: Date.now() };
   if(songFilePending){
     await saveSetting("song_file_" + id, songFilePending);
+    syncSettingBlob("song_file_" + id, songFilePending);
     songFilePending = null;
   }
   state.songs.push(song);
@@ -4234,6 +4821,7 @@ document.getElementById("importFile").onchange = async function(e){
         const blob = item.blobBase64 ? await (await fetch(item.blobBase64)).blob() : null;
         if(blob){
           await addMediaRecord({
+            id: "m" + Date.now() + Math.random().toString(16).slice(2,7),
             type: item.type || "image",
             blob: blob,
             name: item.name || "导入文件",
@@ -4319,6 +4907,7 @@ document.getElementById("bgFile").onchange = async function(e){
   if(!file) return;
   const blob = await compressImage(file);
   await saveSetting("customBg", blob);
+  syncSettingBlob("customBg", blob);
   state.background = { mode: "custom" };
   saveState(); renderSettings();
   e.target.value = "";
@@ -4326,6 +4915,7 @@ document.getElementById("bgFile").onchange = async function(e){
 };
 document.getElementById("bgClearBtn").onclick = async function(){
   await saveSetting("customBg", null);
+  publishSettingDelete("customBg");
   state.background = { mode: "blush" };
   saveState(); renderSettings();
   toast("已恢复默认背景");
@@ -4411,6 +5001,7 @@ document.getElementById("coupleBoyAvatarFile").onchange = async function(e){
   if(!file) return;
   const blob = await compressImage(file);
   await saveSetting("coupleBoyAvatar", blob);
+  syncSettingBlob("coupleBoyAvatar", blob);
   state.couple.boyAvatar = true;
   saveState(); await applyCoupleVisuals(); e.target.value = "";
   toast("邵禹头像已更新");
@@ -4420,6 +5011,7 @@ document.getElementById("coupleGirlAvatarFile").onchange = async function(e){
   if(!file) return;
   const blob = await compressImage(file);
   await saveSetting("coupleGirlAvatar", blob);
+  syncSettingBlob("coupleGirlAvatar", blob);
   state.couple.girlAvatar = true;
   saveState(); await applyCoupleVisuals(); e.target.value = "";
   toast("杨颖头像已更新");
@@ -4429,12 +5021,14 @@ document.getElementById("coupleBgFile").onchange = async function(e){
   if(!file) return;
   const blob = await compressImage(file);
   await saveSetting("coupleHeroBg", blob);
+  syncSettingBlob("coupleHeroBg", blob);
   state.couple.heroBackground = "custom";
   saveState(); await applyCoupleVisuals(); e.target.value = "";
   toast("情侣卡背景已更新");
 };
 document.getElementById("coupleBgClearBtn").onclick = async function(){
   await saveSetting("coupleHeroBg", null);
+  publishSettingDelete("coupleHeroBg");
   state.couple.heroBackground = "default";
   saveState(); await applyCoupleVisuals();
   toast("已恢复默认情侣卡背景");
@@ -4481,6 +5075,7 @@ function toast(text){
 async function init(){
   initAuth();
   await openDB().catch(function(){});
+  await migrateMediaIds();
   await migrateLegacy();
   renderHome();
   await applyCoupleVisuals();
