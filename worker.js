@@ -256,6 +256,58 @@ async function handleLocationGet(request, env){
   }
 }
 
+async function readRelay(env, coupleCode, who){
+  const raw = await env.PUSH_KV.get("relay:" + coupleCode + ":" + who);
+  if(!raw) return [];
+  const list = JSON.parse(raw);
+  return Array.isArray(list) ? list : [];
+}
+
+async function handleRelayPut(request, env){
+  try{
+    const data = await request.json();
+    const coupleCode = String(data.coupleCode || "").trim();
+    const toWho = data.toWho === "boy" ? "boy" : (data.toWho === "girl" ? "girl" : "");
+    const message = data.message;
+    if(!coupleCode || !toWho || !message || typeof message !== "object" || !message.type){
+      return json({ ok: false, error: "参数不完整" }, 400);
+    }
+    const relayId = message._relayId ||
+      message.id ||
+      (message.transferId != null ? String(message.transferId) + "_" + String(message.index != null ? message.index : 0) : "");
+    const key = "relay:" + coupleCode + ":" + toWho;
+    const list = await readRelay(env, coupleCode, toWho);
+    const has = list.some(function(item){ return item && item._relayId === relayId; });
+    if(!has){
+      const next = list.slice();
+      next.push(Object.assign({}, message, {
+        _relayId: relayId || ("r" + Date.now() + Math.random().toString(16).slice(2, 8)),
+        relayTime: Date.now()
+      }));
+      if(next.length > 500) next.splice(0, next.length - 500);
+      await env.PUSH_KV.put(key, JSON.stringify(next));
+    }
+    return json({ ok: true, id: relayId, count: await readRelay(env, coupleCode, toWho).then(function(list){ return list.length; }) });
+  }catch(err){
+    return json({ ok: false, error: String(err && err.message || err) }, 500);
+  }
+}
+
+async function handleRelayGet(request, env){
+  try{
+    const url = new URL(request.url);
+    const coupleCode = String(url.searchParams.get("coupleCode") || "").trim();
+    const who = url.searchParams.get("who") === "boy" ? "boy" : (url.searchParams.get("who") === "girl" ? "girl" : "");
+    if(!coupleCode || !who){
+      return json({ ok: false, error: "参数不完整" }, 400);
+    }
+    const list = await readRelay(env, coupleCode, who);
+    return json({ ok: true, items: list });
+  }catch(err){
+    return json({ ok: false, error: String(err && err.message || err) }, 500);
+  }
+}
+
 export default {
   async fetch(request, env){
     if(request.method === "OPTIONS"){
@@ -279,6 +331,12 @@ export default {
     }
     if(url.pathname === "/api/location/get" && request.method === "GET"){
       return handleLocationGet(request, env);
+    }
+    if(url.pathname === "/api/relay/put" && request.method === "POST"){
+      return handleRelayPut(request, env);
+    }
+    if(url.pathname === "/api/relay/get" && request.method === "GET"){
+      return handleRelayGet(request, env);
     }
     return json({ ok: false, error: "not found" }, 404);
   }

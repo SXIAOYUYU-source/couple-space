@@ -1553,6 +1553,7 @@ const DEFAULT_STATE = {
   spark: { lastChatDate: "", streak: 0, longest: 0 },
   push: { server: "", enabled: false },
   migratedLegacy: false,
+  workerRelayCursor: 0,
   syncMeta: {}
 };
 
@@ -1596,6 +1597,9 @@ let partnerTyping = false;
 let typingHideTimer = null;
 let typingPublishTimer = null;
 let pendingChat = [];
+let workerInboxTimer = null;
+let workerPolling = false;
+let lastHistorySend = 0;
 let annivTimer = null;
 let currentScreen = "home";
 let installPrompt = null;
@@ -2099,6 +2103,7 @@ document.getElementById("welcomeEnter").onclick = function(){
   renderHome();
   initGoEasy();
   reportLocation();
+  startWorkerSync();
 };
 
 // ============ IndexedDB ============
@@ -2541,7 +2546,7 @@ function setChatStatus(text, ok){
   if(el){ el.textContent = text; el.classList.toggle("off", !ok); }
 }
 function publishPresence(status){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy || !goEasyConnected || getPushServer()) return;
   goEasy.pubsub.publish({
     channel: chatChannel(),
     message: JSON.stringify({ type: "presence", name: myName(), who: state.profile.who, status: status, time: Date.now(), battery: ownBattery.level, network: navigator.onLine }),
@@ -2549,7 +2554,7 @@ function publishPresence(status){
   });
 }
 function publishLocationRequest(){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy || !goEasyConnected || getPushServer()) return;
   goEasy.pubsub.publish({
     channel: locationChannel(),
     message: JSON.stringify({ type: "location_request", name: myName(), who: state.profile.who, time: Date.now() }),
@@ -2558,7 +2563,7 @@ function publishLocationRequest(){
 }
 function respondLocationRequest(){
   const data = state.myLocation;
-  if(!data || !goEasy || !goEasyConnected) return;
+  if(!data || !goEasy || !goEasyConnected || getPushServer()) return;
   goEasy.pubsub.publish({
     channel: locationChannel(),
     message: JSON.stringify(data),
@@ -2566,7 +2571,7 @@ function respondLocationRequest(){
   });
 }
 function publishTyping(){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy || !goEasyConnected || getPushServer()) return;
   goEasy.pubsub.publish({
     channel: chatChannel(),
     message: JSON.stringify({ type: "typing", name: myName(), who: state.profile.who, time: Date.now() }),
@@ -2673,7 +2678,7 @@ function handleGoEasyMessage(message){
   }catch(e){}
 }
 function appendChat(msg, fromRemote){
-  if(state.chat.some(function(m){ return m.id === msg.id; })) return;
+  if(state.chat.some(function(m){ return m.id === msg.id; })) return false;
   const isMine = msg.name === myName();
   state.chat.push({
     id: msg.id || ("m" + Date.now() + Math.random().toString(16).slice(2,7)),
@@ -2691,9 +2696,10 @@ function appendChat(msg, fromRemote){
       playSound("send");
     }
   }
+  return true;
 }
 function sendReadReceipts(){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy || !goEasyConnected || getPushServer()) return;
   const unread = state.chat.filter(function(m){ return !m.mine && !m.readByMe; });
   if(!unread.length) return;
   const ids = unread.map(function(m){ return m.id; });
@@ -2726,29 +2732,39 @@ function chatHistoryItems(){
   });
 }
 function publishChatHistory(){
-  if(!goEasy || !goEasyConnected) return;
-  const items = chatHistoryItems();
+  if(!goEasy && !getPushServer()) return;
+  lastHistorySend = Date.now();
+  const items = chatHistoryItems().slice(-100);
   const batchSize = 50;
   for(let i = 0; i < items.length; i += batchSize){
     const batch = items.slice(i, i + batchSize);
-    goEasy.pubsub.publish({
-      channel: chatChannel(),
-      message: JSON.stringify({ type: "history", name: myName(), uid: myUid(), who: state.profile.who, time: Date.now(), items: batch }),
-      onFailed: function(){}
-    });
+    const historyMsg = { type: "history", name: myName(), uid: myUid(), who: state.profile.who, time: Date.now(), items: batch, _relayId: "history_" + myUid() + "_" + Date.now() + "_" + i };
+    if(goEasy && goEasyConnected && !getPushServer()){
+      goEasy.pubsub.publish({
+        channel: chatChannel(),
+        message: JSON.stringify(historyMsg),
+        onFailed: function(){}
+      });
+    }
+    relaySyncMessage(historyMsg).catch(function(){});
   }
 }
 function publishHistoryRequest(){
-  if(!goEasy || !goEasyConnected) return;
-  goEasy.pubsub.publish({
-    channel: chatChannel(),
-    message: JSON.stringify({ type: "history_request", name: myName(), uid: myUid(), who: state.profile.who, time: Date.now() }),
-    onFailed: function(){}
-  });
+  if(!goEasy && !getPushServer()) return;
+  const req = { type: "history_request", name: myName(), uid: myUid(), who: state.profile.who, time: Date.now(), _relayId: "history_req_" + myUid() + "_" + Date.now() };
+  if(goEasy && goEasyConnected && !getPushServer()){
+    goEasy.pubsub.publish({
+      channel: chatChannel(),
+      message: JSON.stringify(req),
+      onFailed: function(){}
+    });
+  }
+  relaySyncMessage(req).catch(function(){});
 }
 function respondHistoryRequest(data){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy && !getPushServer()) return;
   if(!data || data.name === myName() || (data.uid && data.uid === myUid())) return;
+  if(Date.now() - lastHistorySend < 10000) return;
   setTimeout(publishChatHistory, 200);
 }
 function mergeChatHistory(data){
@@ -2822,7 +2838,7 @@ function scheduleStateSync(force){
   }, 500);
 }
 function publishStateSync(force){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy && !getPushServer()) return;
   const payload = buildSyncState();
   const hash = JSON.stringify(payload);
   if(!force && hash === lastStateSyncHash) return;
@@ -2848,26 +2864,31 @@ function syncStateCore(payload){
   });
 }
 async function publishChunkedSync(kind, payload){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy && !getPushServer()) return;
   const transferId = "t" + Date.now() + Math.random().toString(16).slice(2,7);
   const json = JSON.stringify(payload);
   const total = Math.max(1, Math.ceil(json.length / SYNC_CHUNK_SIZE));
   for(let i = 0; i < total; i++){
-    goEasy.pubsub.publish({
-      channel: syncChannel(),
-      message: JSON.stringify({
-        type: "sync-chunk",
-        kind: kind,
-        transferId: transferId,
-        index: i,
-        total: total,
-        data: json.slice(i * SYNC_CHUNK_SIZE, (i + 1) * SYNC_CHUNK_SIZE),
-        uid: myUid(),
-        name: myName(),
-        time: Date.now()
-      }),
-      onFailed: function(){}
-    });
+    const chunk = {
+      type: "sync-chunk",
+      kind: kind,
+      transferId: transferId,
+      index: i,
+      total: total,
+      data: json.slice(i * SYNC_CHUNK_SIZE, (i + 1) * SYNC_CHUNK_SIZE),
+      uid: myUid(),
+      name: myName(),
+      time: Date.now(),
+      _relayId: transferId + "_" + i
+    };
+    if(goEasy && goEasyConnected && !getPushServer()){
+      goEasy.pubsub.publish({
+        channel: syncChannel(),
+        message: JSON.stringify(chunk),
+        onFailed: function(){}
+      });
+    }
+    relaySyncMessage(chunk).catch(function(){});
     if(i < total - 1) await new Promise(function(resolve){ setTimeout(resolve, 30); });
   }
 }
@@ -3077,12 +3098,14 @@ async function rerenderAllSync(){
   updateSmartAssistant(currentScreen);
 }
 function publishDirectSync(obj){
-  if(!goEasy || !goEasyConnected) return;
-  goEasy.pubsub.publish({
-    channel: syncChannel(),
-    message: JSON.stringify(obj),
-    onFailed: function(){}
-  });
+  if(goEasy && goEasyConnected && !getPushServer()){
+    goEasy.pubsub.publish({
+      channel: syncChannel(),
+      message: JSON.stringify(obj),
+      onFailed: function(){}
+    });
+  }
+  relaySyncMessage(obj).catch(function(){});
 }
 async function getMediaRecord(id){
   const db = await openDB();
@@ -3090,7 +3113,7 @@ async function getMediaRecord(id){
   return idbRequest(tx.objectStore("media").get(id));
 }
 async function syncMediaRecord(record){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy && !getPushServer()) return;
   if(!record || !record.blob) return;
   if(!record.blob.size || record.blob.size > MAX_MEDIA_SYNC_BYTES){
     toast("这个文件超过 5MB，只保存在本机");
@@ -3132,7 +3155,7 @@ async function applyRemoteMediaAdd(payload){
   }catch(e){}
 }
 async function publishMediaInventory(){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy && !getPushServer()) return;
   let items = [];
   try{ items = await getAllMedia(); }catch(e){}
   publishChunkedSync("media-inventory", {
@@ -3212,7 +3235,7 @@ async function handleRemoteMediaUpdate(data){
   }
 }
 async function publishSettingsInventory(){
-  if(!goEasy || !goEasyConnected) return;
+  if(!goEasy && !getPushServer()) return;
   const keys = ["customBg", "coupleHeroBg", "coupleBoyAvatar", "coupleGirlAvatar"];
   (state.songs || []).forEach(function(s){
     if(s.fileKey && keys.indexOf(s.fileKey) === -1) keys.push(s.fileKey);
@@ -3259,7 +3282,7 @@ async function handleSettingsRequest(data){
   }
 }
 async function syncSettingBlob(key, blob){
-  if(!goEasy || !goEasyConnected) return false;
+  if(!goEasy && !getPushServer()) return false;
   if(!blob) return false;
   if(!blob.size || blob.size > MAX_MEDIA_SYNC_BYTES){
     toast("这个文件超过 5MB，只保存在本机");
@@ -3380,7 +3403,7 @@ document.getElementById("chatInput").addEventListener("keydown", function(e){
 });
 document.getElementById("chatInput").addEventListener("input", function(){
   clearTimeout(typingPublishTimer);
-  typingPublishTimer = setTimeout(publishTyping, 300);
+  typingPublishTimer = setTimeout(publishTyping, 1000);
 });
 window.addEventListener("beforeunload", function(){ publishPresence("offline"); });
 window.addEventListener("pagehide", function(){ publishPresence("offline"); });
@@ -3390,16 +3413,14 @@ function sendChat(){
   if(!text) return;
   const msg = { type: "chat", id: "c" + Date.now() + Math.random().toString(16).slice(2,7), name: myName(), text: text, time: Date.now(), mine: true, read: false, pending: true };
   input.value = "";
-  if(goEasy && goEasyConnected){
-    goEasy.pubsub.publish({
-      channel: chatChannel(),
-      message: JSON.stringify(msg),
-      onSuccess: function(){ markChatSent(msg.id); playSound("send"); },
-      onFailed: function(){
-        pendingChat.push(msg);
-        toast("消息未同步，已自动排队重发");
-        renderChat();
-      }
+  if((goEasy && goEasyConnected) || getPushServer()){
+    publishChatAttempts(msg, function(){
+      markChatSent(msg.id);
+      playSound("send");
+    }, function(err){
+      pendingChat.push(msg);
+      toast("消息未同步(" + goEasyErrorText(err) + ")，已自动排队重发");
+      renderChat();
     });
   }else{
     pendingChat.push(msg);
@@ -3415,16 +3436,75 @@ function markChatSent(id){
   if(item) item.pending = false;
   renderChat();
 }
-function flushPendingChat(){
-  if(!goEasy || !goEasyConnected || !pendingChat.length) return;
-  pendingChat.slice().forEach(function(msg){
+function publishChatAttempts(msg, onSuccess, onFailed){
+  const server = getPushServer();
+  let delivered = false;
+  let goEasyDone = false;
+  let workerDone = false;
+  let goEasyFailed = false;
+  let workerFailed = false;
+  let lastError = { code: "", content: "实时通道和云端通道都未送达" };
+  function markGoEasy(ok, err){
+    if(delivered) return;
+    goEasyDone = true;
+    if(ok){
+      delivered = true;
+      onSuccess(msg);
+    }else{
+      if(err) lastError = err;
+      goEasyFailed = true;
+      checkDone();
+    }
+  }
+  function markWorker(ok, err){
+    if(delivered) return;
+    workerDone = true;
+    if(ok){
+      delivered = true;
+      onSuccess(msg);
+    }else{
+      if(err && (lastError.code == null && !lastError.codeStr)) lastError = err;
+      workerFailed = true;
+      checkDone();
+    }
+  }
+  function checkDone(){
+    if(delivered || !goEasyDone || !workerDone) return;
+    if(goEasyFailed && workerFailed) onFailed(lastError);
+  }
+  if(goEasy && goEasyConnected && !server){
     goEasy.pubsub.publish({
       channel: chatChannel(),
       message: JSON.stringify(msg),
-      onSuccess: function(){ markChatSent(msg.id); playSound("send"); },
-      onFailed: function(){}
+      onSuccess: function(){ markGoEasy(true); },
+      onFailed: function(err){ markGoEasy(false, err); }
+    });
+  }else{
+    markGoEasy(false);
+  }
+  if(server){
+    relayChatViaWorker(msg).then(function(ok){ markWorker(!!ok); }).catch(function(err){ markWorker(false, err); });
+  }else{
+    markWorker(false);
+  }
+}
+function flushPendingChat(){
+  if(!pendingChat.length) return;
+  if(!goEasy && !getPushServer()) return;
+  pendingChat.slice().forEach(function(msg){
+    publishChatAttempts(msg, function(){
+      markChatSent(msg.id);
+      playSound("send");
+    }, function(){
     });
   });
+}
+function goEasyErrorText(err){
+  if(!err) return "";
+  const code = err.code != null ? err.code : err.codeStr || "";
+  const content = String(err.content || err.message || "").trim();
+  if(!code && !content) return "网络错误";
+  return (code ? String(code) : "") + (content ? " " + content.slice(0, 40) : "");
 }
 document.querySelectorAll("#chatQuick [data-quick]").forEach(function(btn){
   btn.onclick = function(){
@@ -3448,8 +3528,10 @@ function reportLocation(recenter){
     };
     applyMyLocation(data, recenter !== false);
     syncLocationToServer(data);
-    if(goEasy && goEasyConnected){
-      goEasy.pubsub.publish({ channel: locationChannel(), message: JSON.stringify(data), onFailed: function(){ toast("位置同步失败"); } });
+    if(goEasy && goEasyConnected && !getPushServer()){
+      goEasy.pubsub.publish({ channel: locationChannel(), message: JSON.stringify(data), onFailed: function(err){
+        toast("位置同步失败(" + goEasyErrorText(err) + ")");
+      } });
     }
   }, function(){
     document.getElementById("mapStatus").textContent = "定位失败，请授权位置";
@@ -3674,6 +3756,7 @@ window.addEventListener("visibilitychange", function(){
     publishPresence("online");
     reportLocation(false);
     fetchPartnerLocationFromServer();
+    pollWorkerInbox();
   }
 });
 
@@ -5487,13 +5570,15 @@ function levelPet(){
   }
 }
 function publishPet(syncTs){
-  if(goEasy && goEasyConnected){
+  const petMsg = Object.assign({ type: "pet", _relayId: "pet_" + myUid() + "_" + syncTs }, state.pet, { syncTs: syncTs });
+  if(goEasy && goEasyConnected && !getPushServer()){
     goEasy.pubsub.publish({
       channel: petChannel(),
-      message: JSON.stringify(Object.assign({ type: "pet" }, state.pet, { syncTs: syncTs })),
+      message: JSON.stringify(petMsg),
       onFailed: function(){}
     });
   }
+  relaySyncMessage(petMsg).catch(function(){});
 }
 function resetPetCountsIfNeeded(){
   const today = fmtDate(new Date());
@@ -5711,6 +5796,79 @@ async function testPushServerConnection(){
   }catch(e){
     return false;
   }
+}
+function relaySyncMessage(message){
+  const server = getPushServer();
+  if(!server) return Promise.reject(new Error("未配置推送服务器"));
+  const relayMsg = Object.assign({}, message || {});
+  if(!relayMsg._relayId){
+    relayMsg._relayId = relayMsg.id ||
+      (relayMsg.transferId != null ? String(relayMsg.transferId) + "_" + String(relayMsg.index != null ? relayMsg.index : 0) : "") ||
+      ("r" + Date.now() + Math.random().toString(16).slice(2, 8));
+  }
+  return pushFetch("/api/relay/put", {
+    coupleCode: state.coupleCode || DEFAULT_COUPLE_CODE,
+    toWho: state.profile.who === "boy" ? "girl" : "boy",
+    message: relayMsg
+  }).then(function(res){ return !!(res && res.ok); });
+}
+function relayChatViaWorker(msg){
+  return relaySyncMessage(msg);
+}
+function handleWorkerRelayMessage(raw){
+  if(!raw || !raw.type) return;
+  if(raw.type === "chat"){
+    appendChat(raw, true);
+    return;
+  }
+  if(raw.type === "sync-chunk"){
+    receiveSyncChunk(raw);
+    return;
+  }
+  const syncTypes = ["media-inventory", "media-request", "media-delete", "media-update", "setting-delete", "settings-request"];
+  if(syncTypes.indexOf(raw.type) !== -1){
+    handleSyncMessage({ content: JSON.stringify(raw) });
+    return;
+  }
+  if(raw.type === "video-signal"){
+    handleVideoSignal({ content: JSON.stringify(raw) });
+    return;
+  }
+  handleGoEasyMessage({ content: JSON.stringify(raw) });
+}
+async function pollWorkerInbox(){
+  const server = getPushServer();
+  if(!server || workerPolling) return;
+  workerPolling = true;
+  try{
+    const res = await pushGet("/api/relay/get?coupleCode=" + encodeURIComponent(state.coupleCode || DEFAULT_COUPLE_CODE) + "&who=" + encodeURIComponent(state.profile.who));
+    const items = res && Array.isArray(res.items) ? res.items : [];
+    let cursor = Number(state.workerRelayCursor) || 0;
+    let maxTime = 0;
+    items.forEach(function(raw){
+      const t = Number(raw && raw.relayTime) || 0;
+      if(t > cursor){
+        handleWorkerRelayMessage(raw);
+        if(t > maxTime) maxTime = t;
+      }
+    });
+    if(maxTime > cursor){
+      state.workerRelayCursor = maxTime + 1;
+      saveState();
+    }
+  }catch(e){}finally{
+    workerPolling = false;
+  }
+}
+function startWorkerSync(){
+  if(!getPushServer()) return;
+  if(workerInboxTimer) clearInterval(workerInboxTimer);
+  pollWorkerInbox();
+  fetchPartnerLocationFromServer();
+  workerInboxTimer = setInterval(function(){
+    pollWorkerInbox();
+    fetchPartnerLocationFromServer();
+  }, 5000);
 }
 function syncLocationToServer(data){
   if(!data) return;
@@ -5988,6 +6146,7 @@ document.getElementById("pushSaveBtn").onclick = async function(){
     return;
   }
   await setupOfflinePush();
+  startWorkerSync();
   toast("离线推送已保存");
 };
 document.getElementById("pushTestBtn").onclick = async function(){
@@ -6028,6 +6187,7 @@ document.getElementById("pushTestBtn").onclick = async function(){
     if(result && result.ok){
       toast("测试消息已发送");
       updatePushStatus("离线推送已开启");
+      startWorkerSync();
     }else{
       toast("推送失败，请检查服务器地址");
       updatePushStatus("服务器地址无效");
@@ -6272,6 +6432,9 @@ function toast(text){
 }
 
 async function init(){
+  pendingChat = (state.chat || []).filter(function(m){ return m.pending; }).map(function(m){
+    return { type: "chat", id: m.id, name: m.name, text: m.text, time: m.time, mine: true, read: false, pending: true };
+  });
   initAuth();
   await openDB().catch(function(){});
   await migrateMediaIds();
@@ -6302,6 +6465,7 @@ async function init(){
   }
   document.getElementById("musicPlayer").src = CONFIG.music;
   document.getElementById("musicPlayer").load();
+  startWorkerSync();
 }
 init();
 </script>
