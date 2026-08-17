@@ -1595,6 +1595,7 @@ let chatAvatarCache = { boy: null, girl: null };
 let partnerTyping = false;
 let typingHideTimer = null;
 let typingPublishTimer = null;
+let pendingChat = [];
 let annivTimer = null;
 let currentScreen = "home";
 let installPrompt = null;
@@ -2490,11 +2491,12 @@ function initGoEasy(){
         goEasy.pubsub.subscribe({ channel: syncChannel(), onMessage: handleSyncMessage });
         publishPresence("online");
         if(presenceTimer) clearInterval(presenceTimer);
-        presenceTimer = setInterval(function(){ publishPresence("online"); }, 30000);
+        presenceTimer = null;
         reportLocation();
         setTimeout(function(){ publishLocationRequest(); fetchPartnerLocationFromServer(); }, 600);
         setTimeout(function(){ publishChatHistory(); publishHistoryRequest(); }, 800);
         setTimeout(function(){ publishStateSync(true); publishMediaInventory(); publishSettingsInventory(); }, 1200);
+        flushPendingChat();
       },
       onFailed: function(err){
         goEasyConnecting = false;
@@ -2675,7 +2677,7 @@ function appendChat(msg, fromRemote){
   const isMine = msg.name === myName();
   state.chat.push({
     id: msg.id || ("m" + Date.now() + Math.random().toString(16).slice(2,7)),
-    name: msg.name, text: msg.text, time: msg.time || Date.now(), mine: isMine, read: !!msg.read
+    name: msg.name, text: msg.text, time: msg.time || Date.now(), mine: isMine, read: !!msg.read, pending: !!msg.pending
   });
   if(state.chat.length > 300) state.chat = state.chat.slice(-300);
   saveState();
@@ -3362,7 +3364,7 @@ async function renderChat(){
     const d = document.createElement("div");
     d.className = "msg " + (m.mine ? "mine" : "theirs");
     const time = new Date(m.time);
-    const readText = m.mine ? (m.read ? "已读" : "未读") : "";
+    const readText = m.mine ? (m.pending ? "未同步" : (m.read ? "已读" : "未读")) : "";
     d.innerHTML = "<div>" + esc(m.text) + "</div><div class='meta'>" + esc(m.name) + " · " + pad(time.getHours()) + ":" + pad(time.getMinutes()) + (readText ? " · " + readText : "") + "</div>";
     wrap.appendChild(avatar);
     wrap.appendChild(d);
@@ -3381,25 +3383,48 @@ document.getElementById("chatInput").addEventListener("input", function(){
   typingPublishTimer = setTimeout(publishTyping, 300);
 });
 window.addEventListener("beforeunload", function(){ publishPresence("offline"); });
+window.addEventListener("pagehide", function(){ publishPresence("offline"); });
 function sendChat(){
   const input = document.getElementById("chatInput");
   const text = input.value.trim();
   if(!text) return;
-  const msg = { type: "chat", id: "c" + Date.now() + Math.random().toString(16).slice(2,7), name: myName(), text: text, time: Date.now(), mine: true, read: false };
+  const msg = { type: "chat", id: "c" + Date.now() + Math.random().toString(16).slice(2,7), name: myName(), text: text, time: Date.now(), mine: true, read: false, pending: true };
   input.value = "";
   if(goEasy && goEasyConnected){
     goEasy.pubsub.publish({
       channel: chatChannel(),
       message: JSON.stringify(msg),
-      onSuccess: function(){ playSound("send"); },
-      onFailed: function(){ toast("消息未同步，请检查网络"); }
+      onSuccess: function(){ markChatSent(msg.id); playSound("send"); },
+      onFailed: function(){
+        pendingChat.push(msg);
+        toast("消息未同步，已自动排队重发");
+        renderChat();
+      }
     });
   }else{
-    toast("实时连接未建立，消息只保存在本机");
+    pendingChat.push(msg);
+    toast("连接未建立，已保存，稍后自动发送");
   }
   appendChat(msg, false);
   requestOfflineNotify(myName() + " 发来消息", text);
   if(currentScreen === "chat") updateSmartAssistant("chat");
+}
+function markChatSent(id){
+  pendingChat = pendingChat.filter(function(m){ return m.id !== id; });
+  const item = state.chat.find(function(m){ return m.id === id; });
+  if(item) item.pending = false;
+  renderChat();
+}
+function flushPendingChat(){
+  if(!goEasy || !goEasyConnected || !pendingChat.length) return;
+  pendingChat.slice().forEach(function(msg){
+    goEasy.pubsub.publish({
+      channel: chatChannel(),
+      message: JSON.stringify(msg),
+      onSuccess: function(){ markChatSent(msg.id); playSound("send"); },
+      onFailed: function(){}
+    });
+  });
 }
 document.querySelectorAll("#chatQuick [data-quick]").forEach(function(btn){
   btn.onclick = function(){
@@ -3643,9 +3668,10 @@ function drawMapMarkers(keepView){
 setInterval(function(){
   reportLocation(false);
   if(currentScreen === "map") fetchPartnerLocationFromServer();
-}, 15000);
+}, 60000);
 window.addEventListener("visibilitychange", function(){
   if(document.visibilityState === "visible"){
+    publishPresence("online");
     reportLocation(false);
     fetchPartnerLocationFromServer();
   }
